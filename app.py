@@ -24,17 +24,17 @@ if user_message:
     with st.chat_message("user"):
         st.write(user_message)
         
-conversation = ""
+    conversation = ""
 
-for message in st.session_state.messages:
+    for message in st.session_state.messages:
     
     conversation += f'{message["role"]}: {message["content"]}\n'
-with st.chat_message("assistant"):
-    with st.spinner("Росен is thinking..."):
-        response = client.models.generate_content(
-            model="gemma-4-26b-a4b-it",
-            contents=conversation
-        )
+    with st.chat_message("assistant"):
+        with st.spinner("Росен is thinking..."):
+            response = client.models.generate_content(
+                model="gemma-4-26b-a4b-it",
+                contents=conversation
+            )
             
             
 
