@@ -53,32 +53,64 @@ def initialize_firebase():
     return firestore.client(app=app)
 
 db = initialize_firebase()
-
-st.subheader("Create Account")
-
-register_email = st.text_input("Email", key="register_email")
-register_password = st.text_input(
-    "Password",
-    type="password",
-    key="register_password"
-)
-
-if st.button("Create Account"):
-    result = register_user(register_email, register_password)
-
-    if "localId" in result:
-        st.success("Account created successfully!")
-        st.write("User ID:", result["localId"])
-    else:
-        error_message = result.get("error", {}).get(
-            "message",
-            "Unknown registration error"
-        )
-        st.error(error_message)
-st.title("Росен AI")
-st.caption("v2.5 Cloud Test")
 if "user" not in st.session_state:
     st.session_state.user = None
+
+if st.session_state.user is None:
+    st.title("Росен AI")
+    st.caption("Login or create an account")
+
+    account_mode = st.radio(
+        "Account",
+        ["Login", "Create Account"],
+        horizontal=True
+    )
+
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+
+    if account_mode == "Login":
+        if st.button("Login"):
+            result = login_user(email, password)
+
+            if "localId" in result:
+                st.session_state.user = {
+                    "uid": result["localId"],
+                    "email": result["email"],
+                    "id_token": result["idToken"]
+                }
+
+                st.rerun()
+            else:
+                error_message = result.get("error", {}).get(
+                    "message",
+                    "Unknown login error"
+                )
+                st.error(error_message)
+
+    else:
+        if st.button("Create Account"):
+            result = register_user(email, password)
+
+            if "localId" in result:
+                st.session_state.user = {
+                    "uid": result["localId"],
+                    "email": result["email"],
+                    "id_token": result["idToken"]
+                }
+
+                st.rerun()
+            else:
+                error_message = result.get("error", {}).get(
+                    "message",
+                    "Unknown registration error"
+                )
+                st.error(error_message)
+
+    st.stop()
+st.title("Росен AI")
+st.caption("v2.5 Cloud Test")
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 for message in st.session_state.messages:
