@@ -21,6 +21,11 @@ def initialize_firebase():
     return firestore.client(app=app)
 
 db = initialize_firebase()
+test_ref = db.collection("rosen_tests").document("first_test")
+
+test_ref.set({
+    "message": "FIRESTORE WORKATIONISMINGS"
+})
 
 st.title("Росен AI")
 st.caption("v2.5 Cloud Test")
