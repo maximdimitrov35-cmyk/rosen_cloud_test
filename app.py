@@ -17,7 +17,9 @@ from firebase_admin import credentials, firestore, auth
 
 api_key = os.getenv("GOOGLE_API_KEY")
 firebase_web_api_key = st.secrets["FIREBASE_WEB_API_KEY"]
-firebase_info = json.loads(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
+firebase_info = json.loads(
+    st.secrets["FIREBASE_SERVICE_ACCOUNT"]
+)
 
 client = genai.Client(api_key=api_key)
 
@@ -52,7 +54,8 @@ def register_user(email, password):
 def login_user(email, password):
     url = (
         "https://identitytoolkit.googleapis.com/v1/"
-        f"accounts:signInWithPassword?key={firebase_web_api_key}"
+        f"accounts:signInWithPassword?key="
+        f"{firebase_web_api_key}"
     )
 
     payload = {
@@ -121,20 +124,32 @@ cookie_manager = stx.CookieManager()
 
 
 # ============================================================
-# USER SESSION
+# SESSION STATE
 # ============================================================
 
 if "user" not in st.session_state:
     st.session_state.user = None
 
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Try restoring an existing 10-day login.
+if "current_chat_id" not in st.session_state:
+    st.session_state.current_chat_id = None
+
+
+# ============================================================
+# RESTORE LOGIN
+# ============================================================
 
 if st.session_state.user is None:
-    saved_session = cookie_manager.get("rosen_session")
+    saved_session = cookie_manager.get(
+        "rosen_session"
+    )
 
     if saved_session:
-        restored_user = verify_session_cookie(saved_session)
+        restored_user = verify_session_cookie(
+            saved_session
+        )
 
         if restored_user:
             st.session_state.user = restored_user
@@ -166,21 +181,31 @@ if st.session_state.user is None:
         if st.button("Login"):
 
             if not email or not password:
-                st.error("Please enter your email and password.")
+                st.error(
+                    "Please enter your email and password."
+                )
 
             else:
                 try:
-                    result = login_user(email, password)
+                    result = login_user(
+                        email,
+                        password
+                    )
 
                     if "localId" in result:
-                        session_cookie = create_session_cookie(
-                            result["idToken"]
+                        session_cookie = (
+                            create_session_cookie(
+                                result["idToken"]
+                            )
                         )
 
                         cookie_manager.set(
                             "rosen_session",
                             session_cookie,
-                            expires_at=datetime.now() + SESSION_LENGTH
+                            expires_at=(
+                                datetime.now()
+                                + SESSION_LENGTH
+                            )
                         )
 
                         st.session_state.user = {
@@ -191,42 +216,53 @@ if st.session_state.user is None:
                         st.rerun()
 
                     else:
-                        error_message = result.get(
-                            "error", {}
-                        ).get(
-                            "message",
-                            "Unknown login error"
+                        error_message = (
+                            result.get(
+                                "error", {}
+                            ).get(
+                                "message",
+                                "Unknown login error"
+                            )
                         )
 
                         st.error(error_message)
 
                 except requests.RequestException:
                     st.error(
-                        "Could not connect to the login service. "
-                        "Please try again."
+                        "Could not connect to the "
+                        "login service. Please try again."
                     )
-
 
     else:
 
         if st.button("Create Account"):
 
             if not email or not password:
-                st.error("Please enter an email and password.")
+                st.error(
+                    "Please enter an email and password."
+                )
 
             else:
                 try:
-                    result = register_user(email, password)
+                    result = register_user(
+                        email,
+                        password
+                    )
 
                     if "localId" in result:
-                        session_cookie = create_session_cookie(
-                            result["idToken"]
+                        session_cookie = (
+                            create_session_cookie(
+                                result["idToken"]
+                            )
                         )
 
                         cookie_manager.set(
                             "rosen_session",
                             session_cookie,
-                            expires_at=datetime.now() + SESSION_LENGTH
+                            expires_at=(
+                                datetime.now()
+                                + SESSION_LENGTH
+                            )
                         )
 
                         st.session_state.user = {
@@ -237,38 +273,276 @@ if st.session_state.user is None:
                         st.rerun()
 
                     else:
-                        error_message = result.get(
-                            "error", {}
-                        ).get(
-                            "message",
-                            "Unknown registration error"
+                        error_message = (
+                            result.get(
+                                "error", {}
+                            ).get(
+                                "message",
+                                "Unknown registration error"
+                            )
                         )
 
                         st.error(error_message)
 
                 except requests.RequestException:
                     st.error(
-                        "Could not connect to the registration service. "
+                        "Could not connect to the "
+                        "registration service. "
                         "Please try again."
                     )
 
-
-    # Prevent the Росен chat from appearing underneath the login page.
     st.stop()
 
 
 # ============================================================
-# LOGOUT
+# FIRESTORE CHAT PATHS
+# ============================================================
+
+def get_chats_collection():
+    uid = st.session_state.user["uid"]
+
+    return (
+        db.collection("users")
+        .document(uid)
+        .collection("chats")
+    )
+
+
+def get_chat_reference(chat_id):
+    return (
+        get_chats_collection()
+        .document(chat_id)
+    )
+
+
+def get_messages_collection(chat_id):
+    return (
+        get_chat_reference(chat_id)
+        .collection("messages")
+    )
+
+
+# ============================================================
+# CREATE CHAT
+# ============================================================
+
+def create_chat(first_message):
+    chats = get_chats_collection()
+
+    chat_ref = chats.document()
+
+    title = first_message.strip()[:40]
+
+    if not title:
+        title = "New Chat"
+
+    chat_ref.set({
+        "title": title,
+        "created_at": firestore.SERVER_TIMESTAMP,
+        "updated_at": firestore.SERVER_TIMESTAMP
+    })
+
+    return chat_ref.id
+
+
+# ============================================================
+# SAVE MESSAGE
+# ============================================================
+
+def save_message(chat_id, role, content):
+    messages = get_messages_collection(chat_id)
+
+    message_ref = messages.document()
+
+    message_ref.set({
+        "role": role,
+        "content": content,
+        "created_at": firestore.SERVER_TIMESTAMP
+    })
+
+    get_chat_reference(chat_id).update({
+        "updated_at": firestore.SERVER_TIMESTAMP
+    })
+
+
+# ============================================================
+# LOAD CHAT
+# ============================================================
+
+def load_chat(chat_id):
+    messages_ref = get_messages_collection(
+        chat_id
+    )
+
+    docs = (
+        messages_ref
+        .order_by("created_at")
+        .stream()
+    )
+
+    loaded_messages = []
+
+    for doc in docs:
+        data = doc.to_dict()
+
+        loaded_messages.append({
+            "role": data.get(
+                "role",
+                "assistant"
+            ),
+            "content": data.get(
+                "content",
+                ""
+            )
+        })
+
+    st.session_state.messages = loaded_messages
+    st.session_state.current_chat_id = chat_id
+
+
+# ============================================================
+# DELETE CHAT
+# ============================================================
+
+def delete_chat(chat_id):
+    messages_ref = get_messages_collection(
+        chat_id
+    )
+
+    message_docs = messages_ref.stream()
+
+    batch = db.batch()
+    operation_count = 0
+
+    for message_doc in message_docs:
+        batch.delete(message_doc.reference)
+        operation_count += 1
+
+        # Keep comfortably below Firestore's
+        # maximum batch size.
+        if operation_count >= 400:
+            batch.commit()
+            batch = db.batch()
+            operation_count = 0
+
+    if operation_count > 0:
+        batch.commit()
+
+    get_chat_reference(chat_id).delete()
+
+    if (
+        st.session_state.current_chat_id
+        == chat_id
+    ):
+        st.session_state.current_chat_id = None
+        st.session_state.messages = []
+
+
+# ============================================================
+# GET SAVED CHATS
+# ============================================================
+
+def get_saved_chats():
+    chats_ref = get_chats_collection()
+
+    docs = (
+        chats_ref
+        .order_by(
+            "updated_at",
+            direction=firestore.Query.DESCENDING
+        )
+        .stream()
+    )
+
+    chats = []
+
+    for doc in docs:
+        data = doc.to_dict()
+
+        chats.append({
+            "id": doc.id,
+            "title": data.get(
+                "title",
+                "Untitled Chat"
+            )
+        })
+
+    return chats
+
+
+# ============================================================
+# SIDEBAR
 # ============================================================
 
 with st.sidebar:
-    st.write(st.session_state.user["email"])
+    st.subheader("Росен AI")
 
-    if st.button("Log out"):
-        cookie_manager.delete("rosen_session")
+    st.caption(
+        st.session_state.user.get(
+            "email",
+            ""
+        )
+    )
+
+    # --------------------------------------------------------
+    # NEW CHAT
+    # --------------------------------------------------------
+
+    if st.button(
+        "＋ New Chat",
+        use_container_width=True
+    ):
+        st.session_state.messages = []
+        st.session_state.current_chat_id = None
+
+        st.rerun()
+
+    st.divider()
+
+    st.write("Saved Chats")
+
+    try:
+        saved_chats = get_saved_chats()
+
+        if not saved_chats:
+            st.caption("No saved chats yet.")
+
+        for chat in saved_chats:
+
+            if st.button(
+                chat["title"],
+                key=f'load_{chat["id"]}',
+                use_container_width=True
+            ):
+                load_chat(chat["id"])
+                st.rerun()
+
+            if st.button(
+                "Delete",
+                key=f'delete_{chat["id"]}',
+                use_container_width=True
+            ):
+                delete_chat(chat["id"])
+                st.rerun()
+
+    except Exception:
+        st.caption(
+            "Saved chats could not be loaded."
+        )
+
+    st.divider()
+
+    if st.button(
+        "Log out",
+        use_container_width=True
+    ):
+        cookie_manager.delete(
+            "rosen_session"
+        )
 
         st.session_state.user = None
         st.session_state.messages = []
+        st.session_state.current_chat_id = None
 
         st.rerun()
 
@@ -278,67 +552,126 @@ with st.sidebar:
 # ============================================================
 
 st.title("Росен AI")
-st.caption("v2.5 Cloud Test")
+st.caption("v2.5.2 Cloud")
 
 
-# Temporary conversation memory.
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-
-# Display existing messages.
+# ============================================================
+# DISPLAY CHAT HISTORY
+# ============================================================
 
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
+
+    with st.chat_message(
+        message["role"]
+    ):
+        st.write(
+            message["content"]
+        )
 
 
 # ============================================================
 # USER INPUT
 # ============================================================
 
-user_message = st.chat_input("Message Росен")
+user_message = st.chat_input(
+    "Message Росен"
+)
 
 
 if user_message:
 
-    # Add the user's message to temporary memory.
-    st.session_state.messages.append({
+    # --------------------------------------------------------
+    # CREATE CHAT ON FIRST MESSAGE
+    # --------------------------------------------------------
+
+    if (
+        st.session_state.current_chat_id
+        is None
+    ):
+        st.session_state.current_chat_id = (
+            create_chat(user_message)
+        )
+
+    chat_id = (
+        st.session_state.current_chat_id
+    )
+
+    # --------------------------------------------------------
+    # USER MESSAGE
+    # --------------------------------------------------------
+
+    user_data = {
         "role": "user",
         "content": user_message
-    })
+    }
 
+    st.session_state.messages.append(
+        user_data
+    )
 
-    # Display user message.
+    save_message(
+        chat_id,
+        "user",
+        user_message
+    )
+
     with st.chat_message("user"):
         st.write(user_message)
 
+    # --------------------------------------------------------
+    # BUILD GEMMA CONVERSATION
+    # --------------------------------------------------------
 
-    # Build the conversation that Gemma receives.
     conversation = ""
 
     for message in st.session_state.messages:
+
         conversation += (
             f'{message["role"]}: '
             f'{message["content"]}\n'
         )
 
+    # --------------------------------------------------------
+    # GENERATE ROSEN RESPONSE
+    # --------------------------------------------------------
 
-    # Generate Росен's response.
-    with st.chat_message("assistant"):
+    try:
 
-        with st.spinner("Росен is thinking..."):
-            response = client.models.generate_content(
-                model="gemma-4-26b-a4b-it",
-                contents=conversation
-            )
+        with st.chat_message("assistant"):
 
-        st.write(response.text)
+            with st.spinner(
+                "Росен is thinking..."
+            ):
+                response = (
+                    client.models.generate_content(
+                        model=(
+                            "gemma-4-26b-a4b-it"
+                        ),
+                        contents=conversation
+                    )
+                )
 
+            assistant_text = response.text
 
-    # Add Росен's response to temporary memory.
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": response.text
-    })
+            st.write(assistant_text)
+
+        # ----------------------------------------------------
+        # SAVE ASSISTANT RESPONSE
+        # ----------------------------------------------------
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": assistant_text
+        })
+
+        save_message(
+            chat_id,
+            "assistant",
+            assistant_text
+        )
+
+    except Exception:
+        st.error(
+            "Росен had trouble generating a "
+            "response. Your message was still saved."
+        )
