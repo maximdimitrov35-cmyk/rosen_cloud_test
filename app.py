@@ -4,6 +4,7 @@ from google import genai
 import json
 import firebase_admin
 from firebase_admin import credentials, firestore
+import requests
 
 api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key)
@@ -21,11 +22,7 @@ def initialize_firebase():
     return firestore.client(app=app)
 
 db = initialize_firebase()
-test_ref = db.collection("rosen_tests").document("first_test")
 
-test_ref.set({
-    "message": "FIRESTORE WORKATIONISMINGS"
-})
 
 st.title("Росен AI")
 st.caption("v2.5 Cloud Test")
