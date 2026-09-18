@@ -27,8 +27,7 @@ if user_message:
     conversation = ""
 
     for message in st.session_state.messages:
-    
-    conversation += f'{message["role"]}: {message["content"]}\n'
+        conversation += f'{message["role"]}: {message["content"]}\n'
     with st.chat_message("assistant"):
         with st.spinner("Росен is thinking..."):
             response = client.models.generate_content(
