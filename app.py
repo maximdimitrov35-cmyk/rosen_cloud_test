@@ -26,7 +26,21 @@ def register_user(email, password):
     response = requests.post(url, json=payload)
 
     return response.json()
+def login_user(email, password):
+    url = (
+        "https://identitytoolkit.googleapis.com/v1/"
+        f"accounts:signInWithPassword?key={firebase_web_api_key}"
+    )
 
+    payload = {
+        "email": email,
+        "password": password,
+        "returnSecureToken": True
+    }
+
+    response = requests.post(url, json=payload)
+
+    return response.json()
 @st.cache_resource
 def initialize_firebase():
     cred = credentials.Certificate(firebase_info)
@@ -63,6 +77,8 @@ if st.button("Create Account"):
         st.error(error_message)
 st.title("Росен AI")
 st.caption("v2.5 Cloud Test")
+if "user" not in st.session_state:
+    st.session_state.user = None
 if "messages" not in st.session_state:
     st.session_state.messages = []
 for message in st.session_state.messages:
