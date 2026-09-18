@@ -26,7 +26,7 @@ if user_message:
         
     conversation = ""
 
-        for message in st.session_state.messages:
+    for message in st.session_state.messages:
     
     conversation += f'{message["role"]}: {message["content"]}\n'
     with st.chat_message("assistant"):
