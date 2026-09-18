@@ -9,11 +9,18 @@ api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key)
 firebase_info = json.loads(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
 
-if not firebase_admin._apps:
+@st.cache_resource
+def initialize_firebase():
     cred = credentials.Certificate(firebase_info)
-    firebase_admin.initialize_app(cred)
 
-db = firestore.client()
+    try:
+        app = firebase_admin.get_app()
+    except ValueError:
+        app = firebase_admin.initialize_app(cred)
+
+    return firestore.client(app=app)
+
+db = initialize_firebase()
 
 st.title("Росен AI")
 st.caption("v2.5 Cloud Test")
