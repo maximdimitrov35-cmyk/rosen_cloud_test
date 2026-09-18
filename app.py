@@ -7,8 +7,25 @@ from firebase_admin import credentials, firestore
 import requests
 
 api_key = os.getenv("GOOGLE_API_KEY")
+firebase_web_api_key = st.secrets["FIREBASE_WEB_API_KEY"]
 client = genai.Client(api_key=api_key)
 firebase_info = json.loads(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
+
+def register_user(email, password):
+    url = (
+        "https://identitytoolkit.googleapis.com/v1/"
+        f"accounts:signUp?key={firebase_web_api_key}"
+    )
+
+    payload = {
+        "email": email,
+        "password": password,
+        "returnSecureToken": True
+    }
+
+    response = requests.post(url, json=payload)
+
+    return response.json()
 
 @st.cache_resource
 def initialize_firebase():
