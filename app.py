@@ -1,9 +1,19 @@
 import os
 import streamlit as st
 from google import genai
+import json
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key)
+firebase_info = json.loads(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
+
+if not firebase_admin._apps:
+    cred = credentials.Certificate(firebase_info)
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
 
 st.title("Росен AI")
 st.caption("v2.5 Cloud Test")
