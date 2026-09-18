@@ -40,7 +40,27 @@ def initialize_firebase():
 
 db = initialize_firebase()
 
+st.subheader("Create Account")
 
+register_email = st.text_input("Email", key="register_email")
+register_password = st.text_input(
+    "Password",
+    type="password",
+    key="register_password"
+)
+
+if st.button("Create Account"):
+    result = register_user(register_email, register_password)
+
+    if "localId" in result:
+        st.success("Account created successfully!")
+        st.write("User ID:", result["localId"])
+    else:
+        error_message = result.get("error", {}).get(
+            "message",
+            "Unknown registration error"
+        )
+        st.error(error_message)
 st.title("Росен AI")
 st.caption("v2.5 Cloud Test")
 if "messages" not in st.session_state:
