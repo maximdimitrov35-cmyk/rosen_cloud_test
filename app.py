@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime, timedelta
+import time
 
 import requests
 import streamlit as st
@@ -119,7 +120,7 @@ db = initialize_firebase()
 # COOKIE MANAGER
 # ============================================================
 
-cookie_manager = stx.CookieManager()
+cookie_manager = stx.CookieManager(key="rosen_cookie_manager")
 
 
 # ============================================================
@@ -135,18 +136,31 @@ if "messages" not in st.session_state:
 if "current_chat_id" not in st.session_state:
     st.session_state.current_chat_id = None
 
+if "force_logged_out" not in st.session_state:
+    st.session_state.force_logged_out = False
+
 
 # ============================================================
 # RESTORE LOGIN
 # ============================================================
 
-if st.session_state.user is None:
-    saved_session = cookie_manager.get("rosen_session")
+if (
+    st.session_state.user is None
+    and not st.session_state.force_logged_out
+):
+    # On a brand-new Streamlit session, st.context.cookies reads the
+    # cookies that arrived with the browser's initial request. This is
+    # more reliable for restoring a persistent login than depending on
+    # the custom cookie component to finish loading first.
+    saved_session = st.context.cookies.get("rosen_session")
+
+    # Fallback for the current session immediately after the component
+    # has created the cookie but before a completely fresh browser load.
+    if not saved_session:
+        saved_session = cookie_manager.get("rosen_session")
 
     if saved_session:
-        restored_user = verify_session_cookie(
-            saved_session
-        )
+        restored_user = verify_session_cookie(saved_session)
 
         if restored_user:
             st.session_state.user = restored_user
@@ -202,14 +216,23 @@ if st.session_state.user is None:
                             expires_at=(
                                 datetime.now()
                                 + SESSION_LENGTH
-                            )
+                            ),
+                            path="/",
+                            secure=True,
+                            same_site="lax"
                         )
+
+                        st.session_state.force_logged_out = False
 
                         st.session_state.user = {
                             "uid": result["localId"],
                             "email": result["email"]
                         }
 
+                        # Give the browser-side cookie component time
+                        # to actually write the persistent cookie before
+                        # Streamlit interrupts this run.
+                        time.sleep(1.0)
                         st.rerun()
 
                     else:
@@ -259,14 +282,23 @@ if st.session_state.user is None:
                             expires_at=(
                                 datetime.now()
                                 + SESSION_LENGTH
-                            )
+                            ),
+                            path="/",
+                            secure=True,
+                            same_site="lax"
                         )
+
+                        st.session_state.force_logged_out = False
 
                         st.session_state.user = {
                             "uid": result["localId"],
                             "email": result["email"]
                         }
 
+                        # Give the browser-side cookie component time
+                        # to actually write the persistent cookie before
+                        # Streamlit interrupts this run.
+                        time.sleep(1.0)
                         st.rerun()
 
                     else:
@@ -528,27 +560,30 @@ def get_saved_chats():
 # ============================================================
 
 def logout():
-    # extra-streamlit-components can throw KeyError
-    # if its local cookie dictionary does not currently
-    # contain the cookie. Only delete when it sees it.
+    # Suppress automatic cookie restoration for the rest of this
+    # Streamlit session. st.context.cookies is a snapshot from the
+    # initial request, so it can still contain the old cookie until a
+    # completely new browser session begins.
+    st.session_state.force_logged_out = True
 
     try:
-        saved_session = cookie_manager.get(
-            "rosen_session"
-        )
+        saved_session = cookie_manager.get("rosen_session")
 
         if saved_session:
-            cookie_manager.delete(
-                "rosen_session"
-            )
+            cookie_manager.delete("rosen_session")
 
-    except KeyError:
+    except (KeyError, Exception):
+        # Clearing the in-memory login below is still safe. On the next
+        # fresh browser request, an expired/deleted cookie will no longer
+        # be present.
         pass
 
     st.session_state.user = None
     st.session_state.messages = []
     st.session_state.current_chat_id = None
 
+    # Let the browser process the cookie deletion before rerunning.
+    time.sleep(0.5)
     st.rerun()
 
 
