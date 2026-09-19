@@ -54,8 +54,7 @@ def register_user(email, password):
 def login_user(email, password):
     url = (
         "https://identitytoolkit.googleapis.com/v1/"
-        f"accounts:signInWithPassword?key="
-        f"{firebase_web_api_key}"
+        f"accounts:signInWithPassword?key={firebase_web_api_key}"
     )
 
     payload = {
@@ -142,9 +141,7 @@ if "current_chat_id" not in st.session_state:
 # ============================================================
 
 if st.session_state.user is None:
-    saved_session = cookie_manager.get(
-        "rosen_session"
-    )
+    saved_session = cookie_manager.get("rosen_session")
 
     if saved_session:
         restored_user = verify_session_cookie(
@@ -156,7 +153,7 @@ if st.session_state.user is None:
 
 
 # ============================================================
-# LOGIN / REGISTER PAGE
+# LOGIN / REGISTER
 # ============================================================
 
 if st.session_state.user is None:
@@ -295,7 +292,7 @@ if st.session_state.user is None:
 
 
 # ============================================================
-# FIRESTORE CHAT PATHS
+# FIRESTORE PATHS
 # ============================================================
 
 def get_chats_collection():
@@ -327,9 +324,7 @@ def get_messages_collection(chat_id):
 # ============================================================
 
 def create_chat(first_message):
-    chats = get_chats_collection()
-
-    chat_ref = chats.document()
+    chat_ref = get_chats_collection().document()
 
     title = first_message.strip()[:40]
 
@@ -339,7 +334,8 @@ def create_chat(first_message):
     chat_ref.set({
         "title": title,
         "created_at": firestore.SERVER_TIMESTAMP,
-        "updated_at": firestore.SERVER_TIMESTAMP
+        "updated_at": firestore.SERVER_TIMESTAMP,
+        "next_sequence": 0
     })
 
     return chat_ref.id
@@ -350,19 +346,49 @@ def create_chat(first_message):
 # ============================================================
 
 def save_message(chat_id, role, content):
-    messages = get_messages_collection(chat_id)
+    chat_ref = get_chat_reference(chat_id)
 
-    message_ref = messages.document()
+    # Transaction gives every message a reliable sequence number.
+    transaction = db.transaction()
 
-    message_ref.set({
-        "role": role,
-        "content": content,
-        "created_at": firestore.SERVER_TIMESTAMP
-    })
+    @firestore.transactional
+    def save_in_transaction(transaction):
+        chat_snapshot = chat_ref.get(
+            transaction=transaction
+        )
 
-    get_chat_reference(chat_id).update({
-        "updated_at": firestore.SERVER_TIMESTAMP
-    })
+        chat_data = chat_snapshot.to_dict() or {}
+
+        sequence = chat_data.get(
+            "next_sequence",
+            0
+        )
+
+        message_ref = (
+            chat_ref
+            .collection("messages")
+            .document()
+        )
+
+        transaction.set(
+            message_ref,
+            {
+                "role": role,
+                "content": content,
+                "sequence": sequence,
+                "created_at": firestore.SERVER_TIMESTAMP
+            }
+        )
+
+        transaction.update(
+            chat_ref,
+            {
+                "next_sequence": sequence + 1,
+                "updated_at": firestore.SERVER_TIMESTAMP
+            }
+        )
+
+    save_in_transaction(transaction)
 
 
 # ============================================================
@@ -370,13 +396,9 @@ def save_message(chat_id, role, content):
 # ============================================================
 
 def load_chat(chat_id):
-    messages_ref = get_messages_collection(
-        chat_id
-    )
-
     docs = (
-        messages_ref
-        .order_by("created_at")
+        get_messages_collection(chat_id)
+        .order_by("sequence")
         .stream()
     )
 
@@ -405,23 +427,24 @@ def load_chat(chat_id):
 # ============================================================
 
 def delete_chat(chat_id):
-    messages_ref = get_messages_collection(
-        chat_id
+    message_docs = (
+        get_messages_collection(chat_id)
+        .stream()
     )
-
-    message_docs = messages_ref.stream()
 
     batch = db.batch()
     operation_count = 0
 
     for message_doc in message_docs:
-        batch.delete(message_doc.reference)
+        batch.delete(
+            message_doc.reference
+        )
+
         operation_count += 1
 
-        # Keep comfortably below Firestore's
-        # maximum batch size.
         if operation_count >= 400:
             batch.commit()
+
             batch = db.batch()
             operation_count = 0
 
@@ -443,10 +466,8 @@ def delete_chat(chat_id):
 # ============================================================
 
 def get_saved_chats():
-    chats_ref = get_chats_collection()
-
     docs = (
-        chats_ref
+        get_chats_collection()
         .order_by(
             "updated_at",
             direction=firestore.Query.DESCENDING
@@ -471,6 +492,35 @@ def get_saved_chats():
 
 
 # ============================================================
+# LOGOUT
+# ============================================================
+
+def logout():
+    # extra-streamlit-components can throw KeyError
+    # if its local cookie dictionary does not currently
+    # contain the cookie. Only delete when it sees it.
+
+    try:
+        saved_session = cookie_manager.get(
+            "rosen_session"
+        )
+
+        if saved_session:
+            cookie_manager.delete(
+                "rosen_session"
+            )
+
+    except KeyError:
+        pass
+
+    st.session_state.user = None
+    st.session_state.messages = []
+    st.session_state.current_chat_id = None
+
+    st.rerun()
+
+
+# ============================================================
 # SIDEBAR
 # ============================================================
 
@@ -483,10 +533,6 @@ with st.sidebar:
             ""
         )
     )
-
-    # --------------------------------------------------------
-    # NEW CHAT
-    # --------------------------------------------------------
 
     if st.button(
         "＋ New Chat",
@@ -505,7 +551,9 @@ with st.sidebar:
         saved_chats = get_saved_chats()
 
         if not saved_chats:
-            st.caption("No saved chats yet.")
+            st.caption(
+                "No saved chats yet."
+            )
 
         for chat in saved_chats:
 
@@ -525,7 +573,7 @@ with st.sidebar:
                 delete_chat(chat["id"])
                 st.rerun()
 
-    except Exception:
+    except Exception as error:
         st.caption(
             "Saved chats could not be loaded."
         )
@@ -536,15 +584,7 @@ with st.sidebar:
         "Log out",
         use_container_width=True
     ):
-        cookie_manager.delete(
-            "rosen_session"
-        )
-
-        st.session_state.user = None
-        st.session_state.messages = []
-        st.session_state.current_chat_id = None
-
-        st.rerun()
+        logout()
 
 
 # ============================================================
@@ -556,7 +596,7 @@ st.caption("v2.5.2 Cloud")
 
 
 # ============================================================
-# DISPLAY CHAT HISTORY
+# DISPLAY EXISTING MESSAGES
 # ============================================================
 
 for message in st.session_state.messages:
@@ -570,7 +610,7 @@ for message in st.session_state.messages:
 
 
 # ============================================================
-# USER INPUT
+# CHAT INPUT
 # ============================================================
 
 user_message = st.chat_input(
@@ -581,7 +621,7 @@ user_message = st.chat_input(
 if user_message:
 
     # --------------------------------------------------------
-    # CREATE CHAT ON FIRST MESSAGE
+    # CREATE A NEW SAVED CHAT
     # --------------------------------------------------------
 
     if (
@@ -596,18 +636,15 @@ if user_message:
         st.session_state.current_chat_id
     )
 
+
     # --------------------------------------------------------
-    # USER MESSAGE
+    # SAVE USER MESSAGE
     # --------------------------------------------------------
 
-    user_data = {
+    st.session_state.messages.append({
         "role": "user",
         "content": user_message
-    }
-
-    st.session_state.messages.append(
-        user_data
-    )
+    })
 
     save_message(
         chat_id,
@@ -615,11 +652,13 @@ if user_message:
         user_message
     )
 
+
     with st.chat_message("user"):
         st.write(user_message)
 
+
     # --------------------------------------------------------
-    # BUILD GEMMA CONVERSATION
+    # BUILD CONVERSATION
     # --------------------------------------------------------
 
     conversation = ""
@@ -631,8 +670,9 @@ if user_message:
             f'{message["content"]}\n'
         )
 
+
     # --------------------------------------------------------
-    # GENERATE ROSEN RESPONSE
+    # GENERATE RESPONSE
     # --------------------------------------------------------
 
     try:
@@ -644,16 +684,17 @@ if user_message:
             ):
                 response = (
                     client.models.generate_content(
-                        model=(
-                            "gemma-4-26b-a4b-it"
-                        ),
+                        model="gemma-4-26b-a4b-it",
                         contents=conversation
                     )
                 )
 
             assistant_text = response.text
 
-            st.write(assistant_text)
+            st.write(
+                assistant_text
+            )
+
 
         # ----------------------------------------------------
         # SAVE ASSISTANT RESPONSE
@@ -670,8 +711,24 @@ if user_message:
             assistant_text
         )
 
-    except Exception:
+
+        # ----------------------------------------------------
+        # REFRESH SIDEBAR
+        # ----------------------------------------------------
+        #
+        # The sidebar was rendered BEFORE this new chat
+        # existed. Rerun now so Saved Chats immediately
+        # displays the new/updated conversation.
+        #
+        # Messages are already in session_state, so they
+        # reappear normally after the rerun.
+        # ----------------------------------------------------
+
+        st.rerun()
+
+
+    except Exception as error:
         st.error(
-            "Росен had trouble generating a "
-            "response. Your message was still saved."
+            "Росен had trouble generating a response. "
+            "Your message was still saved."
         )
