@@ -749,18 +749,23 @@ if user_message:
             with st.spinner(
                 "Росен is thinking..."
             ):
-                response = (
-                    client.models.generate_content(
-                        model="gemma-4-26b-a4b-it",
-                        contents=conversation
-                    )
+                response_stream = client.models.generate_content_stream(
+                    model="gemma-4-26b-a4b-it",
+                    contents=conversation
                 )
 
-            assistant_text = response.text
+                assistant_text = ""
 
-            st.write(
-                assistant_text
-            )
+                def stream_response():
+                    global assistant_text
+
+                    for chunk in response_stream:
+                        if chunk.text:
+                            assistant_text += chunk.text
+                            yield chunk.text
+
+                st.write_stream(stream_response())
+
 
 
         # ----------------------------------------------------
