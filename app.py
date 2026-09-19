@@ -396,26 +396,58 @@ def save_message(chat_id, role, content):
 # ============================================================
 
 def load_chat(chat_id):
-    docs = (
-        get_messages_collection(chat_id)
-        .order_by("sequence")
-        .stream()
+    messages_ref = get_messages_collection(chat_id)
+
+    message_docs = list(
+        messages_ref.stream()
+    )
+
+    loaded_data = []
+
+    for doc in message_docs:
+        data = doc.to_dict()
+
+        loaded_data.append({
+            "role": data.get("role", "assistant"),
+            "content": data.get("content", ""),
+            "sequence": data.get("sequence"),
+            "created_at": data.get("created_at")
+        })
+
+    # New v2.5.2 messages have sequence numbers.
+    # Older test messages may only have timestamps.
+    def message_sort_key(message):
+        sequence = message["sequence"]
+
+        if sequence is not None:
+            return (
+                0,
+                sequence
+            )
+
+        created_at = message["created_at"]
+
+        if created_at is not None:
+            return (
+                1,
+                created_at.timestamp()
+            )
+
+        return (
+            2,
+            0
+        )
+
+    loaded_data.sort(
+        key=message_sort_key
     )
 
     loaded_messages = []
 
-    for doc in docs:
-        data = doc.to_dict()
-
+    for message in loaded_data:
         loaded_messages.append({
-            "role": data.get(
-                "role",
-                "assistant"
-            ),
-            "content": data.get(
-                "content",
-                ""
-            )
+            "role": message["role"],
+            "content": message["content"]
         })
 
     st.session_state.messages = loaded_messages
