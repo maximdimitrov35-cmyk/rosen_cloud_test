@@ -694,7 +694,12 @@ st.caption("v2.5.2 Cloud")
 for message in st.session_state.messages:
 
     with st.chat_message(
-        message["role"]
+        message["role"],
+        avatar=(
+            "rosen.png"
+            if message["role"] == "assistant"
+            else None
+        )
     ):
         st.write(
             message["content"]
@@ -769,8 +774,10 @@ if user_message:
 
     try:
 
-        with st.chat_message("assistant"):
-
+        with st.chat_message(
+            "assistant",
+            avatar="rosen.png"
+        ):
             with st.spinner(
                 "Росен is thinking..."
             ):
