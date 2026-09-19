@@ -616,6 +616,7 @@ def logout():
 # ============================================================
 
 with st.sidebar:
+    st.image("rosen.png", width=120)
     st.subheader("Росен AI")
 
     st.caption(
