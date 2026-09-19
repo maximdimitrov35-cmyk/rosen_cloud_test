@@ -158,6 +158,8 @@ if "messages" not in st.session_state:
 
 if "current_chat_id" not in st.session_state:
     st.session_state.current_chat_id = None
+if "page" not in st.session_state:
+    st.session_state.page = "chat"
 
 if "force_logged_out" not in st.session_state:
     st.session_state.force_logged_out = False
@@ -669,7 +671,14 @@ with st.sidebar:
         st.caption(
             "Saved chats could not be loaded."
         )
+    st.divider()
 
+    if st.button(
+        "📜 Update Log",
+        use_container_width=True
+    ):
+        st.session_state.page = "update_log"
+        st.rerun()
     st.divider()
 
     if st.button(
@@ -678,13 +687,66 @@ with st.sidebar:
     ):
         logout()
 
+# ============================================================
+# UPDATE LOG
+# ============================================================
 
+if st.session_state.page == "update_log":
+
+    st.image(
+        "rosen.png",
+        width=150
+    )
+
+    st.title("Rosen.APP Update Log")
+
+    st.markdown("""
+### v2.5.3 — QoL Update
+
+- Added the Росен personality to Rosen.APP.
+- Added live streaming responses.
+- Added Uncle Росен branding.
+- Added the Uncle Росен assistant avatar.
+- Added the Update Log menu.
+
+### v2.5.2 — Accounts & Saved Chats
+
+- Added Rosen.APP accounts.
+- Added persistent cloud saved chats.
+- Added New Chat.
+- Added saved-chat loading.
+- Added saved-chat deletion.
+- Added 10-day remembered login sessions.
+
+### v2.5.1 — Chat QoL
+
+- Added the modern chat interface.
+- Added Enter-to-send.
+- Added temporary conversation memory.
+- Improved the overall Rosen.APP chat experience.
+
+### v2.5 — Rosen.APP
+
+- Introduced the online version of Росен AI.
+- Moved Росен to a cloud-based architecture.
+- Added Gemma 4 as the AI model.
+- Added browser-based access through Rosen.APP.
+""")
+
+    if st.button(
+        "← Back to Chat",
+        use_container_width=True
+    ):
+        st.session_state.page = "chat"
+        st.rerun()
+
+    st.stop()
 # ============================================================
 # ROSEN CHAT
 # ============================================================
 
 st.title("Росен AI")
-st.caption("v2.5.2 Cloud")
+st.caption("v2.5.3 Cloud")
 
 
 # ============================================================
