@@ -194,6 +194,7 @@ if (
 # ============================================================
 
 if st.session_state.user is None:
+    st.image("rosen.png", width=180)
     st.title("Росен AI")
     st.caption("Login or create an account")
 
