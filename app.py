@@ -817,7 +817,8 @@ if user_message:
 
 
     except Exception as error:
-        st.error(
-            "Росен had trouble generating a response. "
-            "Your message was still saved."
-        )
+    st.error(
+        "Росен had trouble generating a response. "
+        "Your message was still saved."
+    )
+    st.exception(error)
