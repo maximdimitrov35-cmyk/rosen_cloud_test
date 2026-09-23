@@ -580,7 +580,63 @@ def get_saved_chats():
 
     return chats
 
+# ============================================================
+# IMAGE GENERATION
+# ============================================================
 
+def is_image_request(message):
+    message = message.lower().strip()
+
+    image_words = [
+        "image",
+        "picture",
+        "photo",
+        "illustration",
+        "artwork",
+        "drawing",
+        "wallpaper",
+        "poster",
+        "logo"
+    ]
+
+    action_words = [
+        "create",
+        "generate",
+        "make",
+        "draw",
+        "render",
+        "design",
+        "paint"
+    ]
+
+    has_image_word = any(
+        word in message
+        for word in image_words
+    )
+
+    has_action_word = any(
+        word in message
+        for word in action_words
+    )
+
+    return has_image_word and has_action_word
+
+
+def generate_image(prompt):
+    response = client.models.generate_content(
+        model="gemini-3.1-flash-image",
+        contents=prompt
+    )
+
+    for part in response.parts:
+        # Ignore Gemini's internal thinking/trace images.
+        if getattr(part, "thought", False):
+            continue
+
+        if part.inline_data is not None:
+            return part.as_image()
+
+    return None
 # ============================================================
 # LOGOUT
 # ============================================================
@@ -763,10 +819,24 @@ for message in st.session_state.messages:
             else None
         )
     ):
-        st.write(
-            message["content"]
-        )
 
+        if message.get("type") == "image":
+            image = message.get("image")
+
+            if image is not None:
+                st.image(
+                    image,
+                    use_container_width=True
+                )
+            else:
+                st.write(
+                    message["content"]
+                )
+
+        else:
+            st.write(
+                message["content"]
+            )
 
 # ============================================================
 # CHAT INPUT
@@ -836,61 +906,127 @@ if user_message:
 
     try:
 
-        with st.chat_message(
-            "assistant",
-            avatar="rosen.png"
-        ):
-            with st.spinner(
-                "Росен is thinking..."
+        # ====================================================
+        # IMAGE REQUEST
+        # ====================================================
+
+        if is_image_request(user_message):
+
+            with st.chat_message(
+                "assistant",
+                avatar="rosen.png"
             ):
-                response_stream = client.models.generate_content_stream(
-                    model="gemma-4-26b-a4b-it",
-                    contents=conversation
-                )
 
-                assistant_text = ""
+                with st.spinner(
+                    "Росен is creating your image..."
+                ):
 
-                def stream_response():
-                    global assistant_text
+                    generated_image = generate_image(
+                        user_message
+                    )
 
-                    for chunk in response_stream:
-                        if chunk.text:
-                            assistant_text += chunk.text
-                            yield chunk.text
+                if generated_image is None:
 
-                st.write_stream(stream_response())
+                    st.error(
+                        "Росен could not generate the image."
+                    )
+
+                else:
+
+                    st.image(
+                        generated_image,
+                        use_container_width=True
+                    )
+
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": (
+                            f"Generated image: "
+                            f"{user_message}"
+                        ),
+                        "type": "image",
+                        "image": generated_image
+                    })
+
+                    save_message(
+                        chat_id,
+                        "assistant",
+                        f"Generated image: {user_message}"
+                    )
 
 
+        # ====================================================
+        # NORMAL TEXT REQUEST
+        # ====================================================
 
-        # ----------------------------------------------------
-        # SAVE ASSISTANT RESPONSE
-        # ----------------------------------------------------
+        else:
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": assistant_text
-        })
+            with st.chat_message(
+                "assistant",
+                avatar="rosen.png"
+            ):
 
-        save_message(
-            chat_id,
-            "assistant",
-            assistant_text
-        )
+                with st.spinner(
+                    "Росен is thinking..."
+                ):
+
+                    response_stream = (
+                        client.models.generate_content_stream(
+                            model="gemma-4-26b-a4b-it",
+                            contents=conversation
+                        )
+                    )
+
+                    assistant_text = ""
+
+                    def stream_response():
+
+                        global assistant_text
+
+                        for chunk in response_stream:
+
+                            if chunk.text:
+
+                                assistant_text += chunk.text
+
+                                yield chunk.text
+
+                    st.write_stream(
+                        stream_response()
+                    )
+
+
+            # ------------------------------------------------
+            # SAVE NORMAL RESPONSE
+            # ------------------------------------------------
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": assistant_text
+            })
+
+            save_message(
+                chat_id,
+                "assistant",
+                assistant_text
+            )
 
 
         # ----------------------------------------------------
         # REFRESH SIDEBAR
         # ----------------------------------------------------
-        #
-        # The sidebar was rendered BEFORE this new chat
-        # existed. Rerun now so Saved Chats immediately
-        # displays the new/updated conversation.
-        #
-        # Messages are already in session_state, so they
-        # reappear normally after the rerun.
-        # ----------------------------------------------------
 
         st.rerun()
+
+
+    except Exception as error:
+
+        st.error(
+            "Росен had trouble generating a response. "
+            "Your message was still saved."
+        )
+
+        st.exception(error)
 
 
     except Exception as error:
