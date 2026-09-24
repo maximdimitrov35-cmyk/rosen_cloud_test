@@ -667,9 +667,9 @@ def generate_image(prompt, status_box):
         )
 
     # Wait for the volunteer workers to finish.
-   for _ in range(90):
+       for _ in range(90):
 
-    time.sleep(2)
+            time.sleep(2)
 
     status_response = requests.get(
         f"{base_url}/generate/check/{job_id}",
