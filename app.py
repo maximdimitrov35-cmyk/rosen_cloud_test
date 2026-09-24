@@ -666,64 +666,65 @@ def generate_image(prompt, status_box):
             "AI Horde did not return a generation ID."
         )
 
-    # Wait for the volunteer workers to finish.
-        for _ in range(90):
-            time.sleep(2)
+        # Wait for the volunteer workers to finish.
+    for _ in range(90):
 
-    status_response = requests.get(
-        f"{base_url}/generate/check/{job_id}",
-        headers=headers,
-        timeout=20
-    )
+        time.sleep(2)
 
-    status_response.raise_for_status()
-
-    status = status_response.json()
-
-    if status.get("faulted"):
-        raise RuntimeError(
-            "AI Horde reported that image generation failed."
+        status_response = requests.get(
+            f"{base_url}/generate/check/{job_id}",
+            headers=headers,
+            timeout=20
         )
 
-    if status.get("done"):
-        status_box.info(
-            "✅ Image generation complete! Loading image..."
+        status_response.raise_for_status()
+
+        status = status_response.json()
+
+        if status.get("faulted"):
+            raise RuntimeError(
+                "AI Horde reported that image generation failed."
+            )
+
+        if status.get("done"):
+            status_box.info(
+                "✅ Image generation complete! Loading image..."
+            )
+            break
+
+        queue_position = status.get(
+            "queue_position"
         )
-        break
 
-    queue_position = status.get(
-        "queue_position"
-    )
-
-    wait_time = status.get(
-        "wait_time"
-    )
-
-   if queue_position is not None:
-
-    if wait_time is not None:
-        status_box.info(
-            f"🎨 Rosen is generating your image...\n\n"
-            f"Queue position: {queue_position}\n"
-            f"Estimated wait: {wait_time}s"
+        wait_time = status.get(
+            "wait_time"
         )
+
+        if queue_position is not None:
+
+            if wait_time is not None:
+                status_box.info(
+                    f"🎨 Rosen is generating your image...\n\n"
+                    f"Queue position: {queue_position}\n"
+                    f"Estimated wait: {wait_time}s"
+                )
+
+            else:
+                status_box.info(
+                    f"🎨 Rosen is generating your image...\n\n"
+                    f"Queue position: {queue_position}"
+                )
+
+        else:
+            status_box.info(
+                "🎨 Rosen is waiting for a worker..."
+            )
 
     else:
-        status_box.info(
-            f"🎨 Rosen is generating your image...\n\n"
-            f"Queue position: {queue_position}"
+        raise TimeoutError(
+            "AI Horde is taking too long. "
+            "Please try again in a moment."
         )
-
-else:
-    status_box.info(
-        "🎨 Rosen is waiting for a worker..."
-    )
-
-else:
-    raise TimeoutError(
-        "AI Horde is taking too long. "
-        "Please try again in a moment."
-    )
 
     result_response = requests.get(
         f"{base_url}/generate/status/{job_id}",
