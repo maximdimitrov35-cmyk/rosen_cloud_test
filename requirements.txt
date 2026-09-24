@@ -3,3 +3,4 @@ google-genai
 firebase-admin
 requests
 extra-streamlit-components
+stripe
