@@ -720,7 +720,6 @@ def generate_image(prompt, status_box):
                 "🎨 Rosen is waiting for a worker..."
             )
 
-        )
 
     result_response = requests.get(
         f"{base_url}/generate/status/{job_id}",
