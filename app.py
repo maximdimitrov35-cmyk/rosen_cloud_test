@@ -1060,7 +1060,7 @@ if user_message:
                         status_box
                 )
 
-                    status_box.empty()
+                status_box.empty()
                     
 
                 if generated_image is None:
