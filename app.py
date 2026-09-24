@@ -699,30 +699,31 @@ def generate_image(prompt, status_box):
         "wait_time"
     )
 
-    if queue_position is not None:
+   if queue_position is not None:
 
-        if wait_time is not None:
-            status_box.info(
-                f"🎨 Rosen is generating your image...\n\n"
-                f"Queue position: {queue_position}\n"
-                f"Estimated wait: {wait_time}s"
-            )
-        else:
-            status_box.info(
-                f"🎨 Rosen is generating your image...\n\n"
-                f"Queue position: {queue_position}"
-            )
+    if wait_time is not None:
+        status_box.info(
+            f"🎨 Rosen is generating your image...\n\n"
+            f"Queue position: {queue_position}\n"
+            f"Estimated wait: {wait_time}s"
+        )
 
-        else:
-            status_box.info(
-                "🎨 Rosen is waiting for a worker..."
-            )
+    else:
+        status_box.info(
+            f"🎨 Rosen is generating your image...\n\n"
+            f"Queue position: {queue_position}"
+        )
 
-        else:
-            raise TimeoutError(
-                "AI Horde is taking too long. "
-                "Please try again in a moment."
-            )
+else:
+    status_box.info(
+        "🎨 Rosen is waiting for a worker..."
+    )
+
+else:
+    raise TimeoutError(
+        "AI Horde is taking too long. "
+        "Please try again in a moment."
+    )
 
     result_response = requests.get(
         f"{base_url}/generate/status/{job_id}",
