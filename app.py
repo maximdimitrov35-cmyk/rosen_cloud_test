@@ -644,7 +644,7 @@ def generate_image(prompt, status_box):
         "params": {
             "width": 512,
             "height": 512,
-            "steps": 4,
+            "steps": 16,
             "n": 1
         }
     }
@@ -707,6 +707,7 @@ def generate_image(prompt, status_box):
                     f"🎨 Rosen is generating your image...\n\n"
                     f"Queue position: {queue_position}\n"
                     f"Estimated wait: {wait_time}s"
+                    f"Actual wait is shorter"
                 )
 
             else:
