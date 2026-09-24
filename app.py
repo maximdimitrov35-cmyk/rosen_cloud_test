@@ -667,7 +667,7 @@ def generate_image(prompt, status_box):
         )
 
         # Wait for the volunteer workers to finish.
-    for _ in range(90):
+    while True:
 
         time.sleep(2)
 
@@ -720,10 +720,6 @@ def generate_image(prompt, status_box):
                 "🎨 Rosen is waiting for a worker..."
             )
 
-    else:
-        raise TimeoutError(
-            "AI Horde is taking too long. "
-            "Please try again in a moment."
         )
 
     result_response = requests.get(
