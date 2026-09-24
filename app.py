@@ -1057,7 +1057,7 @@ if user_message:
 
                 generated_image = generate_image(
                     user_message,
-                    status_box
+                        status_box
                 )
 
                     status_box.empty()
