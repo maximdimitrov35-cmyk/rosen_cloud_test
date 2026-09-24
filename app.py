@@ -1055,10 +1055,10 @@ if user_message:
 
                    status_box = st.empty()
 
-                    generated_image = generate_image(
-                        user_message,
-                         status_box
-                    )
+                generated_image = generate_image(
+                    user_message,
+                    status_box
+                )
 
                     status_box.empty()
                     
