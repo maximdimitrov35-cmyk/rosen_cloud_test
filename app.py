@@ -713,17 +713,16 @@ def generate_image(prompt, status_box):
                 f"Queue position: {queue_position}"
             )
 
-    else:
+        else:
+            status_box.info(
+                "🎨 Rosen is waiting for a worker..."
+            )
 
-        status_box.info(
-            "🎨 Rosen is waiting for a worker..."
-        )
-
-    else:
-        raise TimeoutError(
-            "AI Horde is taking too long. "
-            "Please try again in a moment."
-        )
+        else:
+            raise TimeoutError(
+                "AI Horde is taking too long. "
+                "Please try again in a moment."
+            )
 
     result_response = requests.get(
         f"{base_url}/generate/status/{job_id}",
