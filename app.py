@@ -2,7 +2,7 @@ import os
 import json
 from datetime import datetime, timedelta
 import time
-import stripe
+import base64
 
 import requests
 import streamlit as st
