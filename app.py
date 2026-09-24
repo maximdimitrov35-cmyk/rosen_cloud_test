@@ -624,20 +624,118 @@ def is_image_request(message):
 
 
 def generate_image(prompt):
-    response = client.models.generate_content(
-        model="gemini-3.1-flash-image",
-        contents=prompt
+    api_key = st.secrets.get(
+        "AI_HORDE_API_KEY",
+        "0000000000"
     )
 
-    for part in response.parts:
-        # Ignore Gemini's internal thinking/trace images.
-        if getattr(part, "thought", False):
-            continue
+    base_url = "https://stablehorde.net/api/v2"
 
-        if part.inline_data is not None:
-            return part.as_image()
+    headers = {
+        "apikey": api_key,
+        "Client-Agent": "Rosen.APP:2.5.4"
+    }
 
-    return None
+    payload = {
+        "prompt": prompt,
+        "models": [
+            "Flux.1-Schnell fp8 (Compact)"
+        ],
+        "params": {
+            "width": 512,
+            "height": 512,
+            "steps": 4,
+            "n": 1
+        }
+    }
+
+    response = requests.post(
+        f"{base_url}/generate/async",
+        headers=headers,
+        json=payload,
+        timeout=30
+    )
+
+    response.raise_for_status()
+
+    job = response.json()
+    job_id = job.get("id")
+
+    if not job_id:
+        raise RuntimeError(
+            "AI Horde did not return a generation ID."
+        )
+
+    # Wait for the volunteer workers to finish.
+    for _ in range(90):
+        time.sleep(2)
+
+        status_response = requests.get(
+            f"{base_url}/generate/check/{job_id}",
+            headers=headers,
+            timeout=20
+        )
+
+        status_response.raise_for_status()
+        status = status_response.json()
+
+        if status.get("faulted"):
+            raise RuntimeError(
+                "AI Horde reported that image generation failed."
+            )
+
+        if status.get("done"):
+            break
+
+    else:
+        raise TimeoutError(
+            "AI Horde is taking too long. "
+            "Please try again in a moment."
+        )
+
+    result_response = requests.get(
+        f"{base_url}/generate/status/{job_id}",
+        headers=headers,
+        timeout=30
+    )
+
+    result_response.raise_for_status()
+
+    result = result_response.json()
+    generations = result.get("generations", [])
+
+    if not generations:
+        raise RuntimeError(
+            "AI Horde finished without returning an image."
+        )
+
+    image_value = generations[0].get("img")
+
+    if not image_value:
+        raise RuntimeError(
+            "AI Horde returned an empty image."
+        )
+
+    # AI Horde can return an image URL or encoded image data.
+    if image_value.startswith(
+        ("http://", "https://")
+    ):
+        image_response = requests.get(
+            image_value,
+            timeout=30
+        )
+
+        image_response.raise_for_status()
+
+        return image_response.content
+
+    if image_value.startswith("data:"):
+        image_value = image_value.split(
+            ",",
+            1
+        )[1]
+
+    return base64.b64decode(image_value)
 # ============================================================
 # LOGOUT
 # ============================================================
