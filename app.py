@@ -657,11 +657,11 @@ def generate_image(prompt, status_box):
     )
 
     if not response.ok:
-    raise RuntimeError(
-        f"AI Horde request failed "
-        f"({response.status_code}): "
-        f"{response.text}"
-    )
+        raise RuntimeError(
+            f"AI Horde request failed "
+            f"({response.status_code}): "
+            f"{response.text}"
+        )
 
     job = response.json()
     job_id = job.get("id")
