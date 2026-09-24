@@ -656,7 +656,12 @@ def generate_image(prompt, status_box):
         timeout=30
     )
 
-    response.raise_for_status()
+    if not response.ok:
+    raise RuntimeError(
+        f"AI Horde request failed "
+        f"({response.status_code}): "
+        f"{response.text}"
+    )
 
     job = response.json()
     job_id = job.get("id")
@@ -706,8 +711,8 @@ def generate_image(prompt, status_box):
                 status_box.info(
                     f"🎨 Rosen is generating your image...\n\n"
                     f"Queue position: {queue_position}\n"
-                    f"Estimated wait: {wait_time}s"
-                    f"Actual wait is shorter"
+                    f"Estimated wait: {wait_time}s\n"
+                    f"Actual wait is shorter."
                 )
 
             else:
@@ -1160,12 +1165,4 @@ if user_message:
             "Your message was still saved."
         )
 
-        st.exception(error)
-
-
-    except Exception as error:
-        st.error(
-            "Росен had trouble generating a response. "
-            "Your message was still saved."
-        )
         st.exception(error)
