@@ -623,7 +623,7 @@ def is_image_request(message):
     return has_image_word and has_action_word
 
 
-def generate_image(prompt):
+def generate_image(prompt, status_box):
     api_key = st.secrets.get(
         "AI_HORDE_API_KEY",
         "0000000000"
@@ -667,25 +667,58 @@ def generate_image(prompt):
         )
 
     # Wait for the volunteer workers to finish.
-    for _ in range(90):
-        time.sleep(2)
+   for _ in range(90):
 
-        status_response = requests.get(
-            f"{base_url}/generate/check/{job_id}",
-            headers=headers,
-            timeout=20
+    time.sleep(2)
+
+    status_response = requests.get(
+        f"{base_url}/generate/check/{job_id}",
+        headers=headers,
+        timeout=20
+    )
+
+    status_response.raise_for_status()
+
+    status = status_response.json()
+
+    if status.get("faulted"):
+        raise RuntimeError(
+            "AI Horde reported that image generation failed."
         )
 
-        status_response.raise_for_status()
-        status = status_response.json()
+    if status.get("done"):
+        status_box.info(
+            "✅ Image generation complete! Loading image..."
+        )
+        break
 
-        if status.get("faulted"):
-            raise RuntimeError(
-                "AI Horde reported that image generation failed."
+    queue_position = status.get(
+        "queue_position"
+    )
+
+    wait_time = status.get(
+        "wait_time"
+    )
+
+    if queue_position is not None:
+
+        if wait_time is not None:
+            status_box.info(
+                f"🎨 Rosen is generating your image...\n\n"
+                f"Queue position: {queue_position}\n"
+                f"Estimated wait: {wait_time}s"
+            )
+        else:
+            status_box.info(
+                f"🎨 Rosen is generating your image...\n\n"
+                f"Queue position: {queue_position}"
             )
 
-        if status.get("done"):
-            break
+    else:
+
+        status_box.info(
+            "🎨 Rosen is waiting for a worker..."
+        )
 
     else:
         raise TimeoutError(
@@ -1020,8 +1053,14 @@ if user_message:
                     "Росен is creating your image..."
                 ):
 
+                   status_box = st.empty()
+
                     generated_image = generate_image(
-                        user_message
+                        user_message,
+                         status_box
+                    )
+
+                    status_box.empty()
                     )
 
                 if generated_image is None:
