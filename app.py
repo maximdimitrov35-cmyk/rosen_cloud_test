@@ -969,7 +969,7 @@ if user_message:
 
                    status_box = st.empty()
 
-                generated_image, kudos_used = generate_image(
+                generated_image, = generate_image(
                     user_message,
                     status_box
                 )
