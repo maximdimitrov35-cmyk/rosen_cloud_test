@@ -1021,7 +1021,7 @@ if user_message:
                     save_message(
                         chat_id,
                         "assistant",
-                        f"Generated image: {user_message}"
+                        f"Generated image: {user_message}",
                         image = generated_image
                     )
 
