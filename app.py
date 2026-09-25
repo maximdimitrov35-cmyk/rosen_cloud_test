@@ -641,6 +641,19 @@ def generate_image(prompt, status_box):
         "models": [
             "Flux.1-Schnell fp8 (Compact)"
         ],
+            payload = {
+        "prompt": prompt,
+        "models": [
+            "Flux.1-Schnell fp8 (Compact)"
+        ],
+        "allow_downgrade": True,
+        "params": {
+            "width": 512,
+            "height": 512,
+            "steps": 10,
+            "n": 1
+        }
+    }
         "params": {
             "width": 512,
             "height": 512,
@@ -737,6 +750,7 @@ def generate_image(prompt, status_box):
 
     result = result_response.json()
     generations = result.get("generations", [])
+    kudos_used = result.get("kudos")
 
     if not generations:
         raise RuntimeError(
@@ -761,7 +775,7 @@ def generate_image(prompt, status_box):
 
         image_response.raise_for_status()
 
-        return image_response.content
+        return image_response.content, kudos_used
 
     if image_value.startswith("data:"):
         image_value = image_value.split(
@@ -769,7 +783,7 @@ def generate_image(prompt, status_box):
             1
         )[1]
 
-    return base64.b64decode(image_value)
+    return base64.b64decode(image_value), kudos_used
 # ============================================================
 # LOGOUT
 # ============================================================
@@ -1056,12 +1070,15 @@ if user_message:
 
                    status_box = st.empty()
 
-                generated_image = generate_image(
+                generated_image, kudos_used = generate_image(
                     user_message,
-                        status_box
+                    status_box
                 )
+        
 
                 status_box.empty()
+                if kudos_used is not None:
+                    st.caption(f"⚡ AI Horde Kudos used: {kudos_used:g}")
                     
 
                 if generated_image is None:
