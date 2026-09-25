@@ -976,8 +976,7 @@ if user_message:
         
 
                 status_box.empty()
-                if kudos_used is not None:
-                    st.caption(f"⚡ AI Horde Kudos used: {kudos_used:g}")
+             
                     
 
                 if generated_image is None:
