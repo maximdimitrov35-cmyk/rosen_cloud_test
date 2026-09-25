@@ -641,7 +641,7 @@ def generate_image(prompt, status_box):
         "models": [
             "Flux.1-Schnell fp8 (Compact)"
         ],
-            payload: = {
+        payload = {
         "prompt": prompt,
         "models": [
             "Flux.1-Schnell fp8 (Compact)"
