@@ -1001,11 +1001,11 @@ if user_message:
                     )
                     st.download_button(
                         "Download image",
-                        data=image,
+                        data=generated_image
                         file_name="rosen-image.png",
                         mime="image/png",
                         on_click="ignore",
-                        key=f"download_{message_index}"
+                        key=f"download_{chat_id}"
                     )
 
                     st.session_state.messages.append({
@@ -1015,13 +1015,14 @@ if user_message:
                             f"{user_message}"
                         ),
                         "type": "image",
-                        "image": generated_image
+                        "image": generated_image,
                     })
 
                     save_message(
                         chat_id,
                         "assistant",
                         f"Generated image: {user_message}"
+                        image = generated_image
                     )
 
 
