@@ -889,7 +889,7 @@ for message_index, message in enumerate(
                 mime="image/png",
                 on_click="ignore",
                 key=f"download_{message_index}"
-            )
+                )
             else:
                 st.write(
                     message["content"]
