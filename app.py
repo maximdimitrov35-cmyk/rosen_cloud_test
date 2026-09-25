@@ -622,6 +622,65 @@ def is_image_request(message):
 
     return has_image_word and has_action_word
 
+def generate_image(prompt, status_box):
+    account_id = st.secrets["CLOUDFLARE_ACCOUNT_ID"]
+    api_token = st.secrets["CLOUDFLARE_API_TOKEN"]
+
+    url = (
+        f"https://api.cloudflare.com/client/v4/accounts/"
+        f"{account_id}/ai/run/"
+        "@cf/black-forest-labs/flux-1-schnell"
+    )
+
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "prompt": prompt,
+        "steps": 8
+    }
+
+    status_box.info(
+        "🎨 Росен is generating your image with Cloudflare..."
+    )
+
+    response = requests.post(
+        url,
+        headers=headers,
+        json=payload,
+        timeout=120
+    )
+
+    if not response.ok:
+        raise RuntimeError(
+            f"Cloudflare image request failed "
+            f"({response.status_code}): "
+            f"{response.text}"
+        )
+
+    result = response.json()
+
+    if not result.get("success"):
+        raise RuntimeError(
+            f"Cloudflare image generation failed: "
+            f"{result.get('errors', result)}"
+        )
+
+    image_value = result.get("result", {}).get("image")
+
+    if not image_value:
+        raise RuntimeError(
+            "Cloudflare did not return an image."
+        )
+
+    status_box.info(
+        "✅ Image generation complete! Loading image..."
+    )
+
+    return base64.b64decode(image_value)
+
 
 
 # ============================================================
