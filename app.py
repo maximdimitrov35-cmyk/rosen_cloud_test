@@ -882,6 +882,14 @@ for message_index, message in enumerate(
                     image,
                     use_container_width=True
                 )
+            st.download_button(
+                "Download image",
+                data=image,
+                file_name="rosen-image.png",
+                mime="image/png",
+                on_click="ignore",
+                key=f"download_{message_index}"
+            )
             else:
                 st.write(
                     message["content"]
@@ -998,14 +1006,6 @@ if user_message:
                     st.image(
                         generated_image,
                         use_container_width=True
-                    )
-                    st.download_button(
-                        "Download image",
-                        data=generated_image,
-                        file_name="rosen-image.png",
-                        mime="image/png",
-                        on_click="ignore",
-                        key=f"download_{chat_id}"
                     )
 
                     st.session_state.messages.append({
