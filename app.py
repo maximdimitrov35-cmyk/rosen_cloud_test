@@ -404,7 +404,7 @@ def create_chat(first_message):
 # SAVE MESSAGE
 # ============================================================
 
-def save_message(chat_id, role, content):
+def save_message(chat_id, role, content, image=None):
     chat_ref = get_chat_reference(chat_id)
 
     # Transaction gives every message a reliable sequence number.
@@ -431,12 +431,14 @@ def save_message(chat_id, role, content):
 
         transaction.set(
             message_ref,
-            {
+               {
                 "role": role,
                 "content": content,
                 "sequence": sequence,
-                "created_at": firestore.SERVER_TIMESTAMP
-            }
+                "created_at": firestore.SERVER_TIMESTAMP,
+                "type": "image" if image is not None else "text",
+                "image": image
+                }
         )
 
         transaction.update(
@@ -471,6 +473,8 @@ def load_chat(chat_id):
             "content": data.get("content", ""),
             "sequence": data.get("sequence"),
             "created_at": data.get("created_at")
+            "type": data.get("type", "text"),
+            "image": data.get("image")
         })
 
     # New v2.5.2 messages have sequence numbers.
@@ -506,8 +510,10 @@ def load_chat(chat_id):
     for message in loaded_data:
         loaded_messages.append({
             "role": message["role"],
-            "content": message["content"]
-        })
+            "content": message["content"],
+            "type": message["type"],
+            "image": message["image"]
+    })
 
     st.session_state.messages = loaded_messages
     st.session_state.current_chat_id = chat_id
@@ -855,7 +861,9 @@ st.caption("v2.5.3 Cloud")
 # DISPLAY EXISTING MESSAGES
 # ============================================================
 
-for message in st.session_state.messages:
+for message_index, message in enumerate(
+    st.session_state.messages
+):
 
     with st.chat_message(
         message["role"],
@@ -925,6 +933,7 @@ if user_message:
         chat_id,
         "user",
         user_message
+        image=generated_image
     )
 
 
@@ -990,6 +999,14 @@ if user_message:
                     st.image(
                         generated_image,
                         use_container_width=True
+                    )
+                    st.download_button(
+                        "Download image",
+                        data=image,
+                        file_name="rosen-image.png",
+                        mime="image/png",
+                        on_click="ignore",
+                        key=f"download_{message_index}"
                     )
 
                     st.session_state.messages.append({
