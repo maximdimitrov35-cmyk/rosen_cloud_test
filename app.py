@@ -809,7 +809,13 @@ if st.session_state.page == "update_log":
     st.title("Rosen.APP Update Log")
 
     st.markdown("""
-### v2.5.3 — QoL Update
+
+### v.2.6w - Image Generation
+
+- Added Image Generation from CloudFlare
+- Added Download Button for Image
+
+### v2.5.3w — QoL Update
 
 - Added the Росен personality to Rosen.APP.
 - Added live streaming responses.
@@ -817,7 +823,7 @@ if st.session_state.page == "update_log":
 - Added the Uncle Росен assistant avatar.
 - Added the Update Log menu.
 
-### v2.5.2 — Accounts & Saved Chats
+### v2.5.2w — Accounts & Saved Chats
 
 - Added Rosen.APP accounts.
 - Added persistent cloud saved chats.
@@ -826,14 +832,14 @@ if st.session_state.page == "update_log":
 - Added saved-chat deletion.
 - Added 10-day remembered login sessions.
 
-### v2.5.1 — Chat QoL
+### v2.5.1w — Chat QoL
 
 - Added the modern chat interface.
 - Added Enter-to-send.
 - Added temporary conversation memory.
 - Improved the overall Rosen.APP chat experience.
 
-### v2.5 — Rosen.APP
+### v2.5w — Rosen.APP
 
 - Introduced the online version of Росен AI.
 - Moved Росен to a cloud-based architecture.
