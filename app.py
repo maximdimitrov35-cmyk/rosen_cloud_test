@@ -932,8 +932,7 @@ if user_message:
     save_message(
         chat_id,
         "user",
-        user_message,
-        image=generated_image
+        user_message
     )
 
 
