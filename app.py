@@ -649,13 +649,6 @@ def generate_image(prompt, status_box):
             "n": 1
         }
     }
-        "params": {
-            "width": 512,
-            "height": 512,
-            "steps": 8,
-            "n": 1
-        }
-    }
 
     response = requests.post(
         f"{base_url}/generate/async",
