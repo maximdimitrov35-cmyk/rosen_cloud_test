@@ -1001,7 +1001,7 @@ if user_message:
                     )
                     st.download_button(
                         "Download image",
-                        data=generated_image
+                        data=generated_image,
                         file_name="rosen-image.png",
                         mime="image/png",
                         on_click="ignore",
