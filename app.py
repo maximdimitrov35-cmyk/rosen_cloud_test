@@ -472,7 +472,7 @@ def load_chat(chat_id):
             "role": data.get("role", "assistant"),
             "content": data.get("content", ""),
             "sequence": data.get("sequence"),
-            "created_at": data.get("created_at")
+            "created_at": data.get("created_at"),
             "type": data.get("type", "text"),
             "image": data.get("image")
         })
