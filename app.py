@@ -643,7 +643,7 @@ def generate_image(prompt, status_box):
         ],
         "params": {
             "width": 512,
-            "height": 512
+            "height": 512,
             "steps": 10,
             "n": 1
         }
