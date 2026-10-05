@@ -1580,11 +1580,6 @@ if user_message or uploaded_files:
                         "Росен is thinking..."
                     )
 
-                    st.write_stream(
-                        stream_response()
-                    )
-
-
             # ------------------------------------------------
             # SAVE NORMAL RESPONSE
             # ------------------------------------------------
