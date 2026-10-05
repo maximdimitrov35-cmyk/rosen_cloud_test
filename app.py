@@ -1576,10 +1576,7 @@ if user_message or uploaded_files:
                         chat_id
                     )
 
-                    st.write(
-                        "Росен is thinking..."
-                    )
-
+                    
             # ------------------------------------------------
             # SAVE NORMAL RESPONSE
             # ------------------------------------------------
