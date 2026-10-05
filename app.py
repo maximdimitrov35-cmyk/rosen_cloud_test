@@ -5,12 +5,16 @@ import time
 import base64
 from io import BytesIO
 from PIL import Image
+import time
+
 
 import requests
 import streamlit as st
 import extra_streamlit_components as stx
 import firebase_admin
-
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
+from uuid import uuid4
 from google import genai
 from google.genai import types
 from firebase_admin import credentials, firestore, auth
@@ -50,6 +54,93 @@ firebase_info = json.loads(
 )
 
 client = genai.Client(api_key=api_key)
+class GenerationManager:
+
+    def __init__(self):
+        self.executor = ThreadPoolExecutor(
+            max_workers=4
+        )
+        self.lock = Lock()
+        self.jobs = {}
+
+    def submit(self, conversation):
+
+        job_id = uuid4().hex
+
+        with self.lock:
+            self.jobs[job_id] = {
+                "text": "",
+                "done": False,
+                "error": None
+            }
+
+        self.executor.submit(
+            self._run_generation,
+            job_id,
+            conversation
+        )
+
+        return job_id
+
+    def _run_generation(
+        self,
+        job_id,
+        conversation
+    ):
+
+        try:
+
+            response_stream = (
+                client.models.generate_content_stream(
+                    model="gemma-4-26b-a4b-it",
+                    contents=conversation
+                )
+            )
+
+            for chunk in response_stream:
+
+                if chunk.text:
+
+                    with self.lock:
+                        self.jobs[job_id]["text"] += (
+                            chunk.text
+                        )
+
+        except Exception as error:
+
+            with self.lock:
+                self.jobs[job_id]["error"] = (
+                    str(error)
+                )
+
+        finally:
+
+            with self.lock:
+                self.jobs[job_id]["done"] = True
+
+    def get_job(self, job_id):
+
+        with self.lock:
+
+            job = self.jobs.get(job_id)
+
+            if job is None:
+                return None
+
+            return {
+                "text": job["text"],
+                "done": job["done"],
+                "error": job["error"]
+            }
+
+
+@st.cache_resource
+def get_generation_manager():
+
+    return GenerationManager()
+
+
+generation_manager = get_generation_manager()
 
 SESSION_LENGTH = timedelta(days=10)
 
@@ -167,6 +258,12 @@ if "page" not in st.session_state:
 
 if "force_logged_out" not in st.session_state:
     st.session_state.force_logged_out = False
+
+if "generation_job_id" not in st.session_state:
+    st.session_state.generation_job_id = None
+
+if "generation_chat_id" not in st.session_state:
+    st.session_state.generation_chat_id = None
 
 
 # ============================================================
@@ -895,7 +992,87 @@ def generate_image(prompt, status_box):
     return base64.b64decode(image_value)
 
 
+@st.fragment(run_every=0.5)
+def render_active_generation():
 
+    job_id = st.session_state.get(
+        "generation_job_id"
+    )
+
+    if not job_id:
+        return
+
+    job = generation_manager.get_job(
+        job_id
+    )
+
+    if job is None:
+        return
+
+    with st.chat_message(
+        "assistant",
+        avatar="rosen.png"
+    ):
+
+        if job["error"]:
+
+            st.error(
+                "Росен had trouble generating a response."
+            )
+
+            st.session_state.generation_job_id = None
+            return
+
+        if job["text"]:
+
+            st.write(
+                job["text"]
+            )
+
+        else:
+
+            st.write(
+                "Росен is thinking..."
+            )
+
+    if job["done"]:
+
+        generation_chat_id = (
+            st.session_state.get(
+                "generation_chat_id"
+            )
+        )
+
+        if (
+            generation_chat_id
+            and job["text"]
+        ):
+
+            try:
+
+                save_message(
+                    generation_chat_id,
+                    "assistant",
+                    job["text"]
+                )
+
+            except Exception:
+                pass
+
+            if (
+                st.session_state.current_chat_id
+                == generation_chat_id
+            ):
+
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": job["text"]
+                })
+
+        st.session_state.generation_job_id = None
+        st.session_state.generation_chat_id = None
+
+        st.rerun()
 # ============================================================
 # LOGOUT
 # ============================================================
@@ -1385,26 +1562,23 @@ if user_message or uploaded_files:
                     "Росен is thinking..."
                 ):
 
-                    response_stream = (
-                        client.models.generate_content_stream(
-                            model="gemma-4-26b-a4b-it",
-                            contents=conversation
+                    generation_job_id = (
+                        generation_manager.submit(
+                            conversation
                         )
                     )
 
-                    assistant_text = ""
+                    st.session_state.generation_job_id = (
+                        generation_job_id
+                    )
 
-                    def stream_response():
+                    st.session_state.generation_chat_id = (
+                        chat_id
+                    )
 
-                        global assistant_text
-
-                        for chunk in response_stream:
-
-                            if chunk.text:
-
-                                assistant_text += chunk.text
-
-                                yield chunk.text
+                    st.write(
+                        "Росен is thinking..."
+                    )
 
                     st.write_stream(
                         stream_response()
@@ -1431,8 +1605,6 @@ if user_message or uploaded_files:
         # REFRESH SIDEBAR
         # ----------------------------------------------------
 
-        st.rerun()
-
 
     except Exception as error:
 
@@ -1442,3 +1614,5 @@ if user_message or uploaded_files:
         )
 
         st.exception(error)
+        
+render_active_generation()
