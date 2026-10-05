@@ -1584,17 +1584,7 @@ if user_message or uploaded_files:
             # SAVE NORMAL RESPONSE
             # ------------------------------------------------
 
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": assistant_text
-            })
-
-            save_message(
-                chat_id,
-                "assistant",
-                assistant_text
-            )
-
+        
 
         # ----------------------------------------------------
         # REFRESH SIDEBAR
