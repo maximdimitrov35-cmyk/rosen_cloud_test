@@ -1193,6 +1193,10 @@ if st.session_state.page == "update_log":
     st.title("Rosen.APP Update Log")
 
     st.markdown("""
+### v2.7w - UI Bug Fixes
+
+- Fixed the Bug where any UI changes stopped generation
+- Fixed Orientation Switch on Mobile stopping generation
 
 ### v.2.6w - Image Generation
 
