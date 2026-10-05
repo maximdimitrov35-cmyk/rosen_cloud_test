@@ -1553,28 +1553,19 @@ if user_message or uploaded_files:
 
         else:
 
-            with st.chat_message(
-                "assistant",
-                avatar="rosen.png"
-            ):
+            generation_job_id = (
+                generation_manager.submit(
+                    conversation
+                )
+            )
 
-                with st.spinner(
-                    "Росен is thinking..."
-                ):
+            st.session_state.generation_job_id = (
+                generation_job_id
+            )
 
-                    generation_job_id = (
-                        generation_manager.submit(
-                            conversation
-                        )
-                    )
-
-                    st.session_state.generation_job_id = (
-                        generation_job_id
-                    )
-
-                    st.session_state.generation_chat_id = (
-                        chat_id
-                    )
+            st.session_state.generation_chat_id = (
+                chat_id
+            )
 
                     
             # ------------------------------------------------
