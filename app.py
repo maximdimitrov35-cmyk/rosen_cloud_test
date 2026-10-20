@@ -741,16 +741,21 @@ if user_message or uploaded_files:
                     max_output_tokens=1024,
                     temperature=0.7,
                 )
+                
+                # Fallback to non-streaming if chat_session initialization acts up
                 chat_session = client.chats.create(
                     model="gemini-3.8-flash",
-                    history=formatted_history[:-1],
+                    history=formatted_history[:-1] if len(formatted_history) > 1 else [],
                     config=config
                 )
-                response_stream = chat_session.send_message_stream(user_message)
-                assistant_text = st.write_stream(response_stream)
+                
+                response = chat_session.send_message(user_message)
+                assistant_text = response.text or "Росен didn't catch that."
+                st.write(assistant_text)
+                
                 st.session_state.messages.append({"role": "assistant", "content": assistant_text})
                 save_message(chat_id, "assistant", assistant_text)
 
     except Exception as error:
-        st.error("Росен had trouble generating a response. Your message was still saved.")
+        st.error("Росен had trouble generating a response. Check logs for details.")
         st.exception(error)
