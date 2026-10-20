@@ -9,12 +9,9 @@ import requests
 import streamlit as st
 import extra_streamlit_components as stx
 import firebase_admin
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
-from uuid import uuid4
+from firebase_admin import credentials, firestore, auth
 from google import genai
 from google.genai import types
-from firebase_admin import credentials, firestore, auth
 
 ROSEN_PERSONALITY = """
 You are Росен AI (pronounced Rosen), an AI assistant created by Maxim. Your personality is inspired by Uncle Росен: confident, practical, slightly humorous, straightforward, and friendly. 
@@ -44,54 +41,6 @@ firebase_web_api_key = st.secrets["FIREBASE_WEB_API_KEY"]
 firebase_info = json.loads(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
 
 client = genai.Client(api_key=api_key)
-
-class GenerationManager:
-    def __init__(self):
-        self.executor = ThreadPoolExecutor(max_workers=4)
-        self.lock = Lock()
-        self.jobs = {}
-
-    def submit(self, conversation_list):
-        job_id = uuid4().hex
-        with self.lock:
-            self.jobs[job_id] = {"text": "", "done": False, "error": None}
-        self.executor.submit(self._run_generation, job_id, conversation_list)
-        return job_id
-
-    def _run_generation(self, job_id, conversation_list):
-        try:
-            config = types.GenerateContentConfig(
-                max_output_tokens=1024,
-                temperature=0.7,
-            )
-            response_stream = client.models.generate_content_stream(
-                model="gemini-2.5-flash", 
-                contents=conversation_list,
-                config=config
-            )
-            for chunk in response_stream:
-                if chunk.text:
-                    with self.lock:
-                        self.jobs[job_id]["text"] += chunk.text
-        except Exception as error:
-            with self.lock:
-                self.jobs[job_id]["error"] = str(error)
-        finally:
-            with self.lock:
-                self.jobs[job_id]["done"] = True
-
-    def get_job(self, job_id):
-        with self.lock:
-            job = self.jobs.get(job_id)
-            if job is None:
-                return None
-            return {"text": job["text"], "done": job["done"], "error": job["error"]}
-
-@st.cache_resource
-def get_generation_manager():
-    return GenerationManager()
-
-generation_manager = get_generation_manager()
 SESSION_LENGTH = timedelta(days=10)
 
 # ============================================================
@@ -151,10 +100,6 @@ if "page" not in st.session_state:
     st.session_state.page = "chat"
 if "force_logged_out" not in st.session_state:
     st.session_state.force_logged_out = False
-if "generation_job_id" not in st.session_state:
-    st.session_state.generation_job_id = None
-if "generation_chat_id" not in st.session_state:
-    st.session_state.generation_chat_id = None
 
 # ============================================================
 # RESTORE LOGIN
@@ -469,38 +414,6 @@ def generate_image(prompt, status_box):
     status_box.info("✅ Image generation complete! Loading image...")
     return base64.b64decode(image_value)
 
-@st.fragment(run_every=0.5)
-def render_active_generation():
-    job_id = st.session_state.get("generation_job_id")
-    if not job_id:
-        return
-    job = generation_manager.get_job(job_id)
-    if job is None:
-        return
-
-    with st.chat_message("assistant", avatar="rosen.png"):
-        if job["error"]:
-            st.error("Росен had trouble generating a response.")
-            st.session_state.generation_job_id = None
-            return
-        if job["text"]:
-            st.write(job["text"])
-        else:
-            st.write("Росен is thinking...")
-
-        if job["done"]:
-            generation_chat_id = st.session_state.get("generation_chat_id")
-            if generation_chat_id and job["text"]:
-                try:
-                    save_message(generation_chat_id, "assistant", job["text"])
-                except Exception:
-                    pass
-            if st.session_state.current_chat_id == generation_chat_id:
-                st.session_state.messages.append({"role": "assistant", "content": job["text"]})
-            st.session_state.generation_job_id = None
-            st.session_state.generation_chat_id = None
-            st.rerun()
-
 # ============================================================
 # MOBILE QOL
 # ============================================================
@@ -683,12 +596,10 @@ if st.session_state.page == "update_log":
     st.image("rosen.png", width=150)
     st.title("Rosen.APP Update Log")
     st.markdown("""
-    ### v2.8w - Mobile QoL & Speed Optimization
-    - Added automatic sidebar closing after opening a saved chat
-    - Added automatic keyboard dismissal after sending a message
-    - Added automatic return to Rosen's latest response on mobile
-    - Improved mobile image sizing and chat spacing
-    - Optimized conversation history windowing and output tokens for faster response streaming
+    ### v2.8.1w - Direct Streaming Optimization
+    - Replaced background worker threads with reliable direct token streaming
+    - Optimized conversation history windowing (-10 messages) for fast responses
+    - Improved mobile QoL and auto-scrolling
     """)
     if st.button("← Back to Chat", use_container_width=True):
         st.session_state.page = "chat"
@@ -699,7 +610,7 @@ if st.session_state.page == "update_log":
 # ROSEN CHAT
 # ============================================================
 st.title("Росен AI")
-st.caption("v2.8w Cloud")
+st.caption("v2.8.1w Cloud")
 
 # ============================================================
 # DISPLAY EXISTING MESSAGES
@@ -764,7 +675,7 @@ if user_message or uploaded_files:
     # --------------------------------------------------------
     # BUILD CONVERSATION (Sliding Window optimization applied)
     # --------------------------------------------------------
-    recent_messages = st.session_state.messages[-10:] # Limit context to last 10 messages for speed
+    recent_messages = st.session_state.messages[-10:]
     conversation_list = [types.Content(role="user", parts=[types.Part.from_text(text=ROSEN_PERSONALITY)])]
     
     for message in recent_messages:
@@ -815,12 +726,20 @@ if user_message or uploaded_files:
                         save_message(chat_id, "assistant", f"Generated image: {user_message}", image=generated_image)
 
         else:
-            generation_job_id = generation_manager.submit(conversation_list)
-            st.session_state.generation_job_id = generation_job_id
-            st.session_state.generation_chat_id = chat_id
+            with st.chat_message("assistant", avatar="rosen.png"):
+                config = types.GenerateContentConfig(
+                    max_output_tokens=1024,
+                    temperature=0.7,
+                )
+                response_stream = client.models.generate_content_stream(
+                    model="gemini-2.5-flash",
+                    contents=conversation_list,
+                    config=config
+                )
+                assistant_text = st.write_stream(response_stream)
+                st.session_state.messages.append({"role": "assistant", "content": assistant_text})
+                save_message(chat_id, "assistant", assistant_text)
 
     except Exception as error:
         st.error("Росен had trouble generating a response. Your message was still saved.")
         st.exception(error)
-
-render_active_generation()
