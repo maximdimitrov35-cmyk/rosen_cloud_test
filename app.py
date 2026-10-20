@@ -741,4 +741,87 @@ if user_message or uploaded_files:
     chat_id = st.session_state.current_chat_id
 
     if uploaded_files:
-        screenshot_data = [uploaded_file.getvalue() for uploaded_file in
+        screenshot_data = [uploaded_file.getvalue() for uploaded_file in uploaded_files]
+        screenshot_names = [uploaded_file.name for uploaded_file in uploaded_files]
+        st.session_state.messages.append({
+            "role": "user", 
+            "content": user_message, 
+            "type": "screenshots", 
+            "images": screenshot_data, 
+            "image_names": screenshot_names
+        })
+        persistent_screenshots = [prepare_screenshot_for_storage(screenshot) for screenshot in screenshot_data]
+        save_message(chat_id, "user", user_message, screenshots=persistent_screenshots, screenshot_names=screenshot_names)
+    else:
+        st.session_state.messages.append({"role": "user", "content": user_message})
+        save_message(chat_id, "user", user_message)
+
+    with st.chat_message("user"):
+        if user_message:
+            st.write(user_message)
+        for uploaded_file in uploaded_files:
+            st.image(uploaded_file, use_container_width=True)
+
+    # --------------------------------------------------------
+    # BUILD CONVERSATION (Sliding Window optimization applied)
+    # --------------------------------------------------------
+    recent_messages = st.session_state.messages[-10:] # Limit context to last 10 messages for speed
+    conversation_list = [types.Content(role="user", parts=[types.Part.from_text(text=ROSEN_PERSONALITY)])]
+    
+    for message in recent_messages:
+        role = "user" if message["role"] == "user" else "model"
+        conversation_list.append(types.Content(role=role, parts=[types.Part.from_text(text=message["content"])]))
+
+    # --------------------------------------------------------
+    # GENERATE RESPONSE
+    # --------------------------------------------------------
+    try:
+        if uploaded_files:
+            with st.chat_message("assistant", avatar="rosen.png"):
+                with st.spinner("Росен is looking at your screenshot..."):
+                    content_parts = []
+                    for uploaded_file in uploaded_files:
+                        image_bytes = uploaded_file.getvalue()
+                        if not image_bytes:
+                            continue
+                        mime_type = uploaded_file.type or "image/png"
+                        content_parts.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
+                    content_parts.append(types.Part.from_text(text=user_message))
+                    
+                    vision_response = client.models.generate_content(
+                        model="gemma-4-26b-a4b-it", 
+                        contents=content_parts
+                    )
+                    assistant_text = vision_response.text or "Росен could not analyze the screenshot."
+                    st.write(assistant_text)
+                    st.session_state.messages.append({"role": "assistant", "content": assistant_text})
+                    save_message(chat_id, "assistant", assistant_text)
+
+        elif is_image_request(user_message):
+            with st.chat_message("assistant", avatar="rosen.png"):
+                with st.spinner("Росен is creating your image..."):
+                    status_box = st.empty()
+                    generated_image = generate_image(user_message, status_box)
+                    status_box.empty()
+                    if generated_image is None:
+                        st.error("Росен could not generate the image.")
+                    else:
+                        st.image(generated_image, use_container_width=True)
+                        st.session_state.messages.append({
+                            "role": "assistant", 
+                            "content": f"Generated image: {user_message}", 
+                            "type": "image", 
+                            "image": generated_image
+                        })
+                        save_message(chat_id, "assistant", f"Generated image: {user_message}", image=generated_image)
+
+        else:
+            generation_job_id = generation_manager.submit(conversation_list)
+            st.session_state.generation_job_id = generation_job_id
+            st.session_state.generation_chat_id = chat_id
+
+    except Exception as error:
+        st.error("Росен had trouble generating a response. Your message was still saved.")
+        st.exception(error)
+
+render_active_generation()
