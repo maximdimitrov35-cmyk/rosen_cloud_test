@@ -596,10 +596,10 @@ if st.session_state.page == "update_log":
     st.image("rosen.png", width=150)
     st.title("Rosen.APP Update Log")
     st.markdown("""
-    ### v2.8.1w - Direct Streaming Optimization
-    - Replaced background worker threads with reliable direct token streaming
-    - Optimized conversation history windowing (-10 messages) for fast responses
-    - Improved mobile QoL and auto-scrolling
+    ### v2.8.2w - Native Chat Session Optimization
+    - Switched to the official SDK Chat Session manager for flawless streaming
+    - Optimized token generation limits and sliding history windows (-10 messages)
+    - Improved mobile responsiveness and auto-scrolling
     """)
     if st.button("← Back to Chat", use_container_width=True):
         st.session_state.page = "chat"
@@ -610,7 +610,7 @@ if st.session_state.page == "update_log":
 # ROSEN CHAT
 # ============================================================
 st.title("Росен AI")
-st.caption("v2.8.1w Cloud")
+st.caption("v2.8.2w Cloud")
 
 # ============================================================
 # DISPLAY EXISTING MESSAGES
@@ -673,14 +673,13 @@ if user_message or uploaded_files:
             st.image(uploaded_file, use_container_width=True)
 
     # --------------------------------------------------------
-    # BUILD CONVERSATION (Sliding Window optimization applied)
+    # BUILD CONVERSATION HISTORY FOR NATIVE CHAT
     # --------------------------------------------------------
     recent_messages = st.session_state.messages[-10:]
-    conversation_list = [types.Content(role="user", parts=[types.Part.from_text(text=ROSEN_PERSONALITY)])]
-    
+    formatted_history = []
     for message in recent_messages:
         role = "user" if message["role"] == "user" else "model"
-        conversation_list.append(types.Content(role=role, parts=[types.Part.from_text(text=message["content"])]))
+        formatted_history.append({"role": role, "parts": [message["content"]]})
 
     # --------------------------------------------------------
     # GENERATE RESPONSE
@@ -728,14 +727,16 @@ if user_message or uploaded_files:
         else:
             with st.chat_message("assistant", avatar="rosen.png"):
                 config = types.GenerateContentConfig(
+                    system_instruction=ROSEN_PERSONALITY,
                     max_output_tokens=1024,
                     temperature=0.7,
                 )
-                response_stream = client.models.generate_content_stream(
+                chat_session = client.chats.create(
                     model="gemini-2.5-flash",
-                    contents=conversation_list,
+                    history=formatted_history[:-1], # Pass preceding history
                     config=config
                 )
+                response_stream = chat_session.send_message_stream(user_message)
                 assistant_text = st.write_stream(response_stream)
                 st.session_state.messages.append({"role": "assistant", "content": assistant_text})
                 save_message(chat_id, "assistant", assistant_text)
