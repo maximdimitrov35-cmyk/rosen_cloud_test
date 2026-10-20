@@ -1018,7 +1018,7 @@ def render_active_generation():
         avatar="rosen.png"
     ):
 
-       if job["error"]:
+        if job["error"]:
 
             st.error(
                 "Росен had trouble generating a response."
