@@ -60,13 +60,12 @@ class GenerationManager:
 
     def _run_generation(self, job_id, conversation_list):
         try:
-            # Optimized token config for faster response generation
             config = types.GenerateContentConfig(
                 max_output_tokens=1024,
                 temperature=0.7,
             )
             response_stream = client.models.generate_content_stream(
-                model="gemma-4-26b-a4b-it", 
+                model="gemini-2.5-flash", 
                 contents=conversation_list,
                 config=config
             )
@@ -789,7 +788,7 @@ if user_message or uploaded_files:
                     content_parts.append(types.Part.from_text(text=user_message))
                     
                     vision_response = client.models.generate_content(
-                        model="gemma-4-26b-a4b-it", 
+                        model="gemini-2.5-flash", 
                         contents=content_parts
                     )
                     assistant_text = vision_response.text or "Росен could not analyze the screenshot."
