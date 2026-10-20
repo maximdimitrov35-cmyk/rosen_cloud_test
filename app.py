@@ -60,7 +60,7 @@ class GenerationManager:
 
     def _run_generation(self, job_id, conversation_list):
         try:
-            # Added a generation config limit to make token generation faster and cleaner
+            # Optimized token config for faster response generation
             config = types.GenerateContentConfig(
                 max_output_tokens=1024,
                 temperature=0.7,
@@ -700,7 +700,7 @@ if st.session_state.page == "update_log":
 # ROSEN CHAT
 # ============================================================
 st.title("Росен AI")
-st.caption("v2.7w Cloud")
+st.caption("v2.8w Cloud")
 
 # ============================================================
 # DISPLAY EXISTING MESSAGES
