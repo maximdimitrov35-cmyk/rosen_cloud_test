@@ -6,6 +6,7 @@ import base64
 from io import BytesIO
 from PIL import Image
 import time
+import logging
 
 
 import requests
@@ -108,10 +109,13 @@ class GenerationManager:
 
         except Exception as error:
 
+            logging.exception(
+                "Rosen generation failed (job_id=%s)",
+                job_id
+            )
+
             with self.lock:
-                self.jobs[job_id]["error"] = (
-                    str(error)
-                )
+                self.jobs[job_id]["error"] = str(error)
 
         finally:
 
@@ -1014,13 +1018,15 @@ def render_active_generation():
         avatar="rosen.png"
     ):
 
-        if job["error"]:
+       if job["error"]:
 
             st.error(
                 "Росен had trouble generating a response."
             )
 
-            st.session_state.generation_job_id = None
+            with st.expander("Technical error details"):
+                st.code(job["error"])
+
             return
 
         if job["text"]:
