@@ -741,7 +741,8 @@ if user_message or uploaded_files:
                 st.session_state.messages.append({"role": "assistant", "content": assistant_text})
                 save_message(chat_id, "assistant", assistant_text)
 
-        except Exception as error:
-            st.error("Росен had trouble generating a response. Your message was still saved.")
-            import traceback
-            st.code(traceback.format_exc(), language="python")
+    except Exception as error:
+        st.error("Росен had trouble generating a response. Your message was still saved.")
+        import traceback
+        st.code(traceback.format_exc(), language="python")
+        
