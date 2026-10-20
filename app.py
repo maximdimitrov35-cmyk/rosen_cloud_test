@@ -1030,9 +1030,11 @@ def render_active_generation():
             return
 
         if job["text"]:
+            
             st.write(job["text"])
 
         else:
+            
             st.write("Росен is thinking...")
 
     if job["done"]:
