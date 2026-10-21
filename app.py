@@ -88,7 +88,9 @@ class GenerationManager:
         job_id,
         conversation
     ):
-
+        started_at = time.perf_counter()
+        first_text_at = None
+        
         try:
 
             response_stream = (
@@ -102,9 +104,12 @@ class GenerationManager:
 
                 if chunk.text:
 
-                    with self.lock:
-                        self.jobs[job_id]["text"] += (
-                            chunk.text
+                    if first_text_at is None:
+                        first_text_at = time.perf_counter()
+
+                        logging.info(
+                            "Rosen first text received after %.2f seconds",
+                            first_text_at - started_at
                         )
 
         except Exception as error:
@@ -118,7 +123,10 @@ class GenerationManager:
                 self.jobs[job_id]["error"] = str(error)
 
         finally:
-
+            logging.info(
+                "Rosen generation finished after %.2f seconds",
+                time.perf_counter() - started_at
+            )
             with self.lock:
                 self.jobs[job_id]["done"] = True
 
