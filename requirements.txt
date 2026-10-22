@@ -4,3 +4,4 @@ firebase-admin
 requests
 extra-streamlit-components
 pillow
+groq
