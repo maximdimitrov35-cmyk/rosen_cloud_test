@@ -1269,6 +1269,13 @@ if st.session_state.page == "update_log":
     st.title("Rosen.APP Update Log")
 
     st.markdown("""
+
+### v2.7.5w - Groq Replacement
+
+- Made Groq generate text instead of Gemini
+- Responses are in milliseconds instead of just seconds
+- Gemma still takes care of Screenshot analysis.
+
 ### v2.7w - UI Bug Fixes
 
 - Fixed the Bug where any UI changes stopped generation
