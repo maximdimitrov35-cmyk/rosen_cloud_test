@@ -1554,6 +1554,12 @@ if st.session_state.page == "update_log":
 
     st.markdown("""
 
+### v2.9w - Chat-Wide User Memory
+
+- Rosen can now remember things the user says to it.
+- Only important things are remembered or ones explicitly stated to be remembered.
+- To be refined and polished in the future
+
 ### v2.7.5w - Groq Replacement
 
 - Made Groq generate text instead of Gemini
@@ -1615,7 +1621,7 @@ if st.session_state.page == "update_log":
 # ============================================================
 
 st.title("Росен AI")
-st.caption("v2.7w Cloud")
+st.caption("v2.9w Cloud")
 
 
 # ============================================================
