@@ -1335,24 +1335,34 @@ if user_message or uploaded_files:
             with st.chat_message("assistant", avatar="rosen.png"):
                 with st.spinner("Росен is reviewing your files..."):
                     content_parts = []
+                    text_file_payloads = ""
+
                     for uploaded_file in uploaded_files:
                         file_bytes = uploaded_file.getvalue()
                         if not file_bytes:
                             continue
                         
                         name = uploaded_file.name.lower()
-                        if name.endswith((".txt", ".py", ".csv", ".json")):
+                        # If it's a code or text file, read it as text and append it to the prompt text
+                        if name.endswith((".txt", ".py", ".csv", ".json", ".md")):
                             try:
                                 text_content = file_bytes.decode("utf-8")
-                                content_parts.append(f"\n[Attached File: {uploaded_file.name}]\n{text_content}\n")
+                                text_file_payloads += f"\n\n--- Contents of {uploaded_file.name} ---\n{text_content}\n"
                             except Exception:
-                                mime_type = uploaded_file.type or "application/octet-stream"
-                                content_parts.append(types.Part.from_bytes(data=file_bytes, mime_type=mime_type))
+                                text_file_payloads += f"\n\n--- [Could not decode {uploaded_file.name}] ---\n"
                         else:
+                            # It's an image/screenshot, pass it safely as a byte part
                             mime_type = uploaded_file.type or "image/png"
-                            content_parts.append(types.Part.from_bytes(data=file_bytes, mime_type=mime_type))
+                            content_parts.append(
+                                types.Part.from_bytes(
+                                    data=file_bytes,
+                                    mime_type=mime_type
+                                )
+                            )
 
-                    content_parts.append(conversation)
+                    # Combine the conversation and any decoded text files into the final text prompt
+                    final_prompt = conversation + text_file_payloads
+                    content_parts.append(final_prompt)
 
                     vision_response = client.models.generate_content(
                         model="gemma-4-26b-a4b-it",
