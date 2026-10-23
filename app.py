@@ -1163,13 +1163,18 @@ if st.session_state.page == "update_log":
     st.image("rosen.png", width=150)
     st.title("Rosen.APP Update Log")
     st.markdown("""
-### v2.8w - UI & File Upload QoL
+### v2.9.5w - UI & File Upload QoL
 - Redesigned Saved Chats sidebar with clean three-dot menus.
 - Expanded accepted attachment formats to include code and text files (.py, .txt, .csv, .json, .pdf).
+
+### v2.9w 
+
+### v2.8w - UI QoL updates and Mobile UI reformatting
 
 ### v2.7.5w - Groq Replacement
 - Made Groq generate text instead of Gemini.
 - Responses are in milliseconds instead of seconds.
+
 """)
     if st.button("← Back to Chat", use_container_width=True):
         st.session_state.page = "chat"
@@ -1182,7 +1187,7 @@ if st.session_state.page == "update_log":
 # ============================================================
 
 st.title("Росен AI")
-st.caption("v2.8w Cloud")
+st.caption("v2.9.5w Cloud")
 
 
 # ============================================================
