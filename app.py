@@ -881,8 +881,15 @@ def load_chat(chat_id):
             attachments.sort(key=lambda a: a["index"])
             for attachment in attachments:
                 if attachment["data"] is not None:
-                    screenshot_images.append(attachment["data"])
-                    screenshot_names.append(attachment["name"])
+                    file_bytes = attachment["data"]
+                    name = attachment["name"].lower()
+                    # Only treat it as an image if it's actually an image extension
+                    if name.endswith((".png", ".jpg", ".jpeg")):
+                        screenshot_images.append(file_bytes)
+                        screenshot_names.append(attachment["name"])
+                    else:
+                        # For code/text files, we store them as text/files rather than images
+                        screenshot_names.append(attachment["name"])
 
         loaded_data.append({
             "role": data.get("role", "assistant"),
@@ -1201,10 +1208,16 @@ for message_index, message in enumerate(st.session_state.messages):
 
         elif message.get("type") == "screenshots":
             images = message.get("images", [])
+            names = message.get("image_names", [])
             if message.get("content"):
                 st.markdown(clean_latex_for_streamlit(message["content"]))
-            for screenshot in images:
-                st.image(screenshot, use_container_width=True)
+            
+            for i, item in enumerate(images):
+                filename = names[i] if i < len(names) else "file"
+                if filename.lower().endswith((".png", ".jpg", ".jpeg")):
+                    st.image(item, use_container_width=True)
+                else:
+                    st.caption(f"📁 Attached file: {filename}")
 
         else:
             st.markdown(clean_latex_for_streamlit(message["content"]))
