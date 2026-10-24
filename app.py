@@ -748,18 +748,76 @@ def process_memory_command(user_message):
 # CREATE CHAT
 # ============================================================
 
+        # ============================================================
+        # DYNAMIC CHAT TITLES
+        # ============================================================
+
+def generate_chat_title(first_message):
+    try:
+        response = groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Generate a concise, meaningful title for an AI chat "
+                        "based ONLY on the user's first message. "
+                        "Use 2-6 words. Preserve important names and subjects. "
+                        "Remove conversational filler. "
+                        "Return ONLY the title, without quotes or explanation."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": first_message[:2000]
+                }
+            ],
+            temperature=0.3,
+            max_tokens=20
+        )
+
+        title = response.choices[0].message.content.strip()
+        title = title.strip('"\'` ')
+
+        if title and len(title.split()) <= 8:
+            return title[:80]
+
+    except Exception:
+        logging.exception("Dynamic chat title generation failed")
+
+    return "New Chat"
+
+
+def _generate_and_save_chat_title(chat_id, first_message):
+    title = generate_chat_title(first_message)
+
+    try:
+        get_chat_reference(chat_id).update({
+            "title": title,
+            "updated_at": firestore.SERVER_TIMESTAMP
+        })
+    except Exception:
+        logging.exception("Could not save generated chat title")
+
+
 def create_chat(first_message):
     chat_ref = get_chats_collection().document()
-    title = first_message.strip()[:40]
-    if not title:
-        title = "New Chat"
 
     chat_ref.set({
-        "title": title,
+        "title": "New Chat",
         "created_at": firestore.SERVER_TIMESTAMP,
         "updated_at": firestore.SERVER_TIMESTAMP,
         "next_sequence": 0
     })
+
+    # Generate the title in the background so chat creation
+    # does not have to wait for Groq.
+    generation_manager.executor.submit(
+        _generate_and_save_chat_title,
+        chat_ref.id,
+        first_message
+    )
+
     return chat_ref.id
 
 
