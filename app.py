@@ -686,6 +686,7 @@ def extract_and_save_implicit_memory(uid, user_message, recent_context):
             logging.info("Updated personal memory for user %s", uid)
     except Exception:
         logging.exception("Could not extract/update Rosen personal memory")
+        
 
 
 def process_memory_command(user_message):
@@ -798,6 +799,7 @@ def _generate_and_save_chat_title(chat_id, first_message):
         })
     except Exception:
         logging.exception("Could not save generated chat title")
+        raise
 
 
 def create_chat(first_message):
