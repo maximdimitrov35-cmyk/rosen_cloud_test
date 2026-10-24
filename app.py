@@ -1160,11 +1160,11 @@ with st.sidebar:
 # ============================================================
 
 if st.session_state.page == "update_log":
+    st.image("rosen.png", width=150)
+    st.title("Rosen.APP Update Log")
     if st.button("⬅ Back to Chat", use_container_width=True):
         st.session_state.page = "chat"
         st.rerun()
-    st.image("rosen.png", width=150)
-    st.title("Rosen.APP Update Log")
     st.markdown("""
 
 # 🟢 ROSEN AI — PAST UPDATES
