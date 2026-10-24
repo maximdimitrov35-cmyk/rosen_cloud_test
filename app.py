@@ -1163,18 +1163,153 @@ if st.session_state.page == "update_log":
     st.image("rosen.png", width=150)
     st.title("Rosen.APP Update Log")
     st.markdown("""
-### v2.9.5w - UI & File Upload QoL
-- Redesigned Saved Chats sidebar with clean three-dot menus.
-- Expanded accepted attachment formats to include code and text files (.py, .txt, .csv, .json, .pdf).
 
-### v2.9w 
+# 🟢 ROSEN AI — PAST UPDATES
 
-### v2.8w - UI QoL updates and Mobile UI reformatting
+## **Version 2.5w — Cloud Development**
+- Continued development of Rosen's cloud-based website.
+- Improved the web interface and AI integration.
+- Developed cloud-based image generation.
 
-### v2.7.5w - Groq Replacement
-- Made Groq generate text instead of Gemini.
-- Responses are in milliseconds instead of seconds.
+---
 
+## **Version 2.6w — Image Generation Fixes**
+- Fixed a bug that caused code or trace text to appear instead of generated images.
+- Improved image generation reliability.
+- Integrated Firebase storage for generated images.
+
+---
+
+## **Version 2.7w — Mobile Functionality Improvements**
+- Fixed mobile image rotation issues.
+- Fixed problems with deleting chats and starting new conversations.
+- Improved update log opening and closing behavior.
+
+---
+
+## **Version 2.7.5w — Performance Improvements**
+- Integrated Groq for AI text generation.
+- Improved cloud-based response generation.
+
+---
+
+## **Version 2.9w — Memory Management**
+- Introduced persistent AI memory functionality.
+- Developed memory storage using Firebase Firestore.
+- Improved Rosen's ability to remember information between conversations.
+
+---
+
+# 🟡 ROSEN AI — CURRENT UPDATES
+
+## **Version 2.9.5w — File Handling Improvements**
+**Release Date:** October 23, 2026
+
+- Fixed file handling for various file types, including `.txt` and `.py`.
+- Improved support for additional file formats.
+
+---
+
+## **Version 2.9.5w Emergency Bug Fix 1 — Update Log**
+**Release Date:** October 23, 2026
+
+- Fixed the update log.
+- Prepared the update log for transfer to Rosen's actual website.
+- Began consolidating past updates and future development plans.
+
+---
+
+# 🔵 ROSEN AI — FUTURE UPDATES
+
+> **Planned Development Order:** 2.8w → 3.2w → 3.3w → Selected 3.4w Features → 2.99w → 3.0w
+
+---
+
+## **Version 2.8w — Mobile UI Improvements**
+**Expected Release:** After 2.9.5w
+
+- Improve Rosen's visual presentation on phones.
+- Refine the mobile interface for a better user experience.
+- Improve usability on smaller screens.
+
+---
+
+## **Version 3.2w — Massive UI Additions**
+**Expected Release:** TBD
+
+- Introduce **interactive checklists**.
+- Add **interactive cards and data tables**.
+- Introduce **progress bars** and other interactive elements.
+- Smooth out interface corners.
+- Add clickable buttons and improve responsiveness.
+- Make UI interactions feel faster.
+
+---
+
+## **Version 3.3w — Memory Management**
+**Expected Release:** TBD
+
+- Allow users to **edit saved information**.
+- Allow users to **delete saved information**.
+- Introduce **temporary chats** that are not saved to persistent chat history.
+
+---
+
+## **Version 3.4w — AI Productivity Tools**
+**Expected Release:** TBD
+
+- Create task lists and reminders.
+- Introduce schedules and study plans.
+- Add reusable templates.
+- Support document summarization and question answering.
+- Allow users to upload PDFs, Word documents, and other supported files.
+
+**Note:** Selected features may be implemented before versions 2.99w and 3.0w.
+
+---
+
+## **Version 2.99w — Final Bug Fixes**
+**Expected Release:** Before 3.0w
+
+- Fix remaining bugs before the phone release.
+- Stabilize existing features.
+- Test the application and prepare for release.
+
+---
+
+## **Version 3.0w — Official Phone Release**
+**Expected Release:** December 1, 2026
+
+- Officially release Rosen for phones.
+- Deliver a polished mobile experience.
+- Make Rosen accessible to family members through mobile devices.
+
+---
+
+## **Version 3.1w — Post-Release Bug Fixes**
+**Expected Release:** TBD
+
+- Address issues discovered after the 3.0w release.
+- Improve stability and reliability.
+- Fix bugs reported after launch.
+
+---
+
+## **Version 3.5w — Rosen Voice**
+**Expected Release:** TBD
+
+- Introduce **speech-to-text functionality**.
+- Allow users to record their voice and send spoken input to Rosen as text.
+- Provide a voice-input experience similar to ChatGPT and Gemini.
+
+---
+
+## **Version 3.6w — Custom Personalities**
+**Expected Release:** TBD
+
+- Allow users to **choose Rosen's conversational personality**.
+- Introduce customizable interaction styles.
+- Allow users to select their preferred way of interacting with Rosen.
 """)
     if st.button("← Back to Chat", use_container_width=True):
         st.session_state.page = "chat"
